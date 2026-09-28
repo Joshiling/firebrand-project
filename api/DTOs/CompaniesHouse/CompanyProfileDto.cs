@@ -2,6 +2,8 @@ using System.Text.Json.Serialization;
 
 namespace Api.DTOs.CompaniesHouse;
 
+// Represents the core company information returned by the Companies House API
+// for a company profile response, including registration and status details.
 public class CompanyProfileDto
 {
     [JsonPropertyName("company_name")]

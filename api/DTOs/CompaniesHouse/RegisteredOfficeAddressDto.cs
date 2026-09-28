@@ -2,6 +2,8 @@ using System.Text.Json.Serialization;
 
 namespace Api.DTOs.CompaniesHouse;
 
+// Represents the registered office address data included in a Companies House
+// company profile response, mapped from the API's JSON field names.
 public class RegisteredOfficeAddressDto
 {
     [JsonPropertyName("address_line_1")]
