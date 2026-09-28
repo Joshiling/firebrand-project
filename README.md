@@ -42,20 +42,19 @@ The displayed records are demonstration data and must not be treated as current 
 
 ## Backend handoff
 
-The complete request, response, validation, error, CORS, and API-key requirements are documented in [Backend API Contract](docs/backend-api-contract.md).
-
-If the team wants separate backend requests for the two Companies House operations, the proposed contract for discussion is:
+The confirmed request, response, validation, error, CORS, and API-key requirements are documented in [Backend API Contract](docs/backend-api-contract.md).
 
 ```http
-GET /api/companies/00002065
-GET /api/companies/search?query=Lloyds&page=1&pageSize=10
+GET /registry_id?registry_id=00002065
+GET /name?name=Lloyds
+GET /registry_id/00002065
 ```
 
-The future Angular HTTP service can use the tested query classifier to select the route. Components continue to call one `search(...)` method and do not need to know which endpoint was selected.
+The first two routes return lists of `Company` results. The third route is reserved for retrieving full details for one company and is not required by the current search-results screen.
 
-The registration-number route can return a single company profile like the supplied Lloyds response. The name-search route must return a result collection with a total count and pagination details; its response will not naturally have the same shape as a single company profile. The C# backend may either expose the source shapes or normalize both into agreed frontend DTOs.
+The future Angular HTTP service will use the tested query classifier to select either `/registry_id` or `/name`. Components continue to call one `search(...)` method and do not need to know which endpoint was selected. The current frontend can paginate the returned list locally.
 
-Before replacing the mock, agree the endpoint URL, pagination convention, optional fields, error responses, CORS or development proxy setup, and how Companies House rate-limit errors are represented. The frontend must call only the C# backend; Companies House credentials must never be placed in browser code.
+Before replacing the mock, the team still needs to confirm the backend base URL and final `Company` JSON field names. The frontend must call only the C# backend; Companies House credentials must never be placed in browser code.
 
 ## Git workflow
 
