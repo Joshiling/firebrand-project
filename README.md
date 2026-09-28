@@ -42,6 +42,8 @@ The displayed records are demonstration data and must not be treated as current 
 
 ## Backend handoff
 
+The complete request, response, validation, error, CORS, and API-key requirements are documented in [Backend API Contract](docs/backend-api-contract.md).
+
 If the team wants separate backend requests for the two Companies House operations, the proposed contract for discussion is:
 
 ```http
