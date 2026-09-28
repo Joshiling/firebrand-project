@@ -23,7 +23,7 @@ describe('MockCompanySearchService', () => {
     const result = await completeSearch('tEsCo');
 
     expect(result.totalResults).toBe(1);
-    expect(result.items[0].name).toBe('Tesco PLC');
+    expect(result.items[0].name).toBe('TESCO PLC');
   });
 
   it('finds a registration number exactly and preserves leading zeros', async () => {
@@ -35,7 +35,18 @@ describe('MockCompanySearchService', () => {
   it('supports registration numbers containing letters', async () => {
     const result = await completeSearch('sc123456');
 
-    expect(result.items[0].name).toBe('River & Field Trading Ltd');
+    expect(result.items[0].name).toBe('RIVER & FIELD TRADING LTD');
+  });
+
+  it('maps the API-shaped Lloyds profile without losing leading zeros', async () => {
+    const result = await completeSearch('00002065');
+
+    expect(result.items[0]).toMatchObject({
+      name: 'LLOYDS BANK PLC',
+      registrationNumber: '00002065',
+      status: 'active',
+      type: 'plc',
+    });
   });
 
   it('filters before returning a requested page', async () => {

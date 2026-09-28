@@ -1,8 +1,8 @@
 export interface RegisteredAddress {
-  addressLine1: string;
+  addressLine1?: string;
   addressLine2?: string;
-  locality: string;
-  postalCode: string;
+  locality?: string;
+  postalCode?: string;
 }
 
 export interface CompanySummary {

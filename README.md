@@ -34,38 +34,24 @@ npm run build
 
 ## Mock data
 
-`MockCompanySearchService` implements the same frontend-owned interface intended for the future HTTP service. It performs case-insensitive partial name matching, exact case-insensitive registration-number matching, and asynchronous pagination.
+`MockCompanySearchService` implements the same frontend-owned interface intended for the future HTTP service. Its fixtures use the snake_case Companies House company-profile shape, which is mapped into the frontend display model at the service boundary.
+
+Queries matching eight digits or two letters followed by six digits are treated as registration numbers. Other input is treated as a company name. Company numbers must remain strings because values can have leading zeros (`00002065`) or letter prefixes (`SC123456`).
 
 The displayed records are demonstration data and must not be treated as current Companies House records.
 
 ## Backend handoff
 
-The proposed contract for team discussion is:
+If the team wants separate backend requests for the two Companies House operations, the proposed contract for discussion is:
 
 ```http
-GET /api/companies?query=Tesco&page=1&pageSize=10
+GET /api/companies/00002065
+GET /api/companies/search?query=Lloyds&page=1&pageSize=10
 ```
 
-```json
-{
-	"items": [
-		{
-			"name": "Tesco PLC",
-			"registrationNumber": "00445790",
-			"status": "Active",
-			"type": "Public limited company",
-			"registeredAddress": {
-				"addressLine1": "Example address",
-				"locality": "Welwyn Garden City",
-				"postalCode": "AL7 1AA"
-			}
-		}
-	],
-	"totalResults": 1,
-	"page": 1,
-	"pageSize": 10
-}
-```
+The future Angular HTTP service can use the tested query classifier to select the route. Components continue to call one `search(...)` method and do not need to know which endpoint was selected.
+
+The registration-number route can return a single company profile like the supplied Lloyds response. The name-search route must return a result collection with a total count and pagination details; its response will not naturally have the same shape as a single company profile. The C# backend may either expose the source shapes or normalize both into agreed frontend DTOs.
 
 Before replacing the mock, agree the endpoint URL, pagination convention, optional fields, error responses, CORS or development proxy setup, and how Companies House rate-limit errors are represented. The frontend must call only the C# backend; Companies House credentials must never be placed in browser code.
 

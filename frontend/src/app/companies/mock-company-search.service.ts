@@ -1,8 +1,10 @@
 import { Injectable } from '@angular/core';
 import { Observable, delay, of } from 'rxjs';
+import { mapCompaniesHouseProfile } from './companies-house-profile';
 import { CompanySearchPage, CompanySearchRequest, CompanySummary } from './company.model';
+import { classifyCompanyQuery } from './company-query';
 import { CompanySearchService } from './company-search.service';
-import { MOCK_COMPANIES } from './mock-companies';
+import { MOCK_COMPANY_PROFILES } from './mock-companies';
 
 @Injectable()
 export class MockCompanySearchService extends CompanySearchService {
@@ -10,12 +12,16 @@ export class MockCompanySearchService extends CompanySearchService {
     const query = request.query.trim().toLocaleLowerCase();
     const page = Math.max(1, request.page);
     const pageSize = Math.max(1, request.pageSize);
-    const registrationMatch = MOCK_COMPANIES.find(
-      (company) => company.registrationNumber.toLocaleLowerCase() === query,
-    );
-    const matches: readonly CompanySummary[] = registrationMatch
-      ? [registrationMatch]
-      : MOCK_COMPANIES.filter((company) => company.name.toLocaleLowerCase().includes(query));
+    const queryKind = classifyCompanyQuery(query);
+    const matchingProfiles =
+      queryKind === 'registrationNumber'
+        ? MOCK_COMPANY_PROFILES.filter(
+            (company) => company.company_number.toLocaleLowerCase() === query,
+          )
+        : MOCK_COMPANY_PROFILES.filter((company) =>
+            company.company_name.toLocaleLowerCase().includes(query),
+          );
+    const matches: readonly CompanySummary[] = matchingProfiles.map(mapCompaniesHouseProfile);
     const startIndex = (page - 1) * pageSize;
 
     return of({
