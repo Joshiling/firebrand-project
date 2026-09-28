@@ -1,0 +1,17 @@
+<nav class="pagination" aria-label="Search result pages">
+  <button
+    type="button"
+    (click)="goTo(currentPage() - 1)"
+    [disabled]="disabled() || currentPage() === 1"
+  >
+    Previous
+  </button>
+  <span aria-live="polite">Page {{ currentPage() }} of {{ totalPages() }}</span>
+  <button
+    type="button"
+    (click)="goTo(currentPage() + 1)"
+    [disabled]="disabled() || currentPage() === totalPages()"
+  >
+    Next
+  </button>
+</nav>

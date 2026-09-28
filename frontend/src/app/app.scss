@@ -1,0 +1,81 @@
+.site-header {
+  color: #ffffff;
+  background: #18312f;
+  border-bottom: 4px solid #24a99d;
+}
+
+.site-header__inner,
+main,
+footer {
+  width: min(100% - 2rem, 76rem);
+  margin-inline: auto;
+}
+
+.site-header__inner {
+  min-height: 4.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.brand {
+  color: inherit;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.brand:focus-visible {
+  outline: 3px solid #f2b84b;
+  outline-offset: 4px;
+}
+
+.environment {
+  padding: 0.3rem 0.55rem;
+  color: #18312f;
+  background: #d6f1ed;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+main {
+  min-height: calc(100vh - 13rem);
+  padding-block: clamp(2.5rem, 7vw, 5.5rem);
+}
+
+.page-heading {
+  margin-bottom: clamp(2rem, 5vw, 4rem);
+}
+
+.page-heading p {
+  margin: 0 0 0.35rem;
+  color: #087f75;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  color: #18312f;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2.25rem, 6vw, 4.75rem);
+  line-height: 1;
+}
+
+footer {
+  padding-block: 1.5rem 2rem;
+  color: #52615f;
+  border-top: 1px solid #cdd7d5;
+  font-size: 0.8125rem;
+}
+
+footer p {
+  margin: 0;
+}

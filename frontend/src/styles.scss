@@ -1,0 +1,37 @@
+:root {
+  color-scheme: light;
+  font-family: 'Trebuchet MS', Verdana, sans-serif;
+  font-synthesis: none;
+  background-color: #f4f7f6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 20rem;
+  background: #f4f7f6;
+}
+
+body {
+  min-width: 20rem;
+  min-height: 100vh;
+  margin: 0;
+  color: #243c39;
+  background-color: #f4f7f6;
+  background-image:
+    linear-gradient(rgb(20 108 101 / 4%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(20 108 101 / 4%) 1px, transparent 1px);
+  background-size: 2rem 2rem;
+}
+
+button,
+input {
+  letter-spacing: 0;
+}
+
+::selection {
+  color: #ffffff;
+  background: #146c65;
+}

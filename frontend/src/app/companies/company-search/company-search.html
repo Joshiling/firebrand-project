@@ -1,0 +1,87 @@
+<section class="search-panel" aria-labelledby="search-heading">
+  <div class="section-heading">
+    <p class="eyebrow">UK company records</p>
+    <h2 id="search-heading">Search for a company</h2>
+  </div>
+
+  <form [formGroup]="searchForm" (ngSubmit)="submitSearch()" novalidate>
+    <label for="company-query">Company name or registration number</label>
+    <div class="search-controls">
+      <input
+        id="company-query"
+        type="search"
+        formControlName="query"
+        autocomplete="off"
+        aria-describedby="query-hint query-error"
+        [attr.aria-invalid]="searchForm.controls.query.invalid && searchForm.controls.query.touched"
+      />
+      <button type="submit" [disabled]="loading()">
+        @if (loading()) {
+          <span class="spinner" aria-hidden="true"></span>
+          Searching
+        } @else {
+          Search
+        }
+      </button>
+    </div>
+    <p id="query-hint" class="hint">For example, Tesco or 00445790</p>
+    @if (searchForm.controls.query.invalid && searchForm.controls.query.touched) {
+      <p id="query-error" class="validation" role="alert">
+        Enter a company name or registration number.
+      </p>
+    }
+  </form>
+</section>
+
+<section class="results-panel" aria-labelledby="results-heading" [attr.aria-busy]="loading()">
+  <div class="results-heading">
+    <h2 id="results-heading">Results</h2>
+    @if (result(); as searchResult) {
+      <span>{{ searchResult.totalResults }} found</span>
+    }
+  </div>
+
+  <div class="announcer" aria-live="polite" aria-atomic="true">
+    @if (loading()) {
+      Searching for companies
+    } @else if (requestFailed()) {
+      Company search failed
+    } @else if (result(); as searchResult) {
+      {{ searchResult.totalResults }} companies found
+    }
+  </div>
+
+  @if (loading()) {
+    <div class="state-message loading-state">
+      <span class="spinner spinner--large" aria-hidden="true"></span>
+      <p>Searching company records...</p>
+    </div>
+  } @else if (requestFailed()) {
+    <div class="state-message state-message--error" role="alert">
+      <h3>We could not complete the search</h3>
+      <p>Please try again. If the problem continues, the service may be temporarily unavailable.</p>
+    </div>
+  } @else if (result(); as searchResult) {
+    @if (searchResult.items.length > 0) {
+      <app-company-results [companies]="searchResult.items" />
+      @if (searchResult.totalResults > pageSize) {
+        <app-pagination
+          [currentPage]="searchResult.page"
+          [totalResults]="searchResult.totalResults"
+          [pageSize]="searchResult.pageSize"
+          [disabled]="loading()"
+          (pageChange)="changePage($event)"
+        />
+      }
+    } @else {
+      <div class="state-message">
+        <h3>No companies found</h3>
+        <p>Check the spelling or try a different company name or registration number.</p>
+      </div>
+    }
+  } @else {
+    <div class="state-message state-message--empty">
+      <p>Your search results will appear here.</p>
+    </div>
+  }
+</section>

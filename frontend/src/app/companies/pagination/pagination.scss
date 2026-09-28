@@ -1,0 +1,55 @@
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+span {
+  color: #52615f;
+  font-weight: 700;
+}
+
+button {
+  min-width: 6.5rem;
+  min-height: 2.75rem;
+  padding: 0.625rem 1rem;
+  color: #ffffff;
+  background: #146c65;
+  border: 2px solid #146c65;
+  border-radius: 4px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: #0d554f;
+  border-color: #0d554f;
+}
+
+button:disabled {
+  color: #65716f;
+  background: #e3e8e7;
+  border-color: #d4dcda;
+  cursor: not-allowed;
+}
+
+button:focus-visible {
+  outline: 3px solid #f2b84b;
+  outline-offset: 3px;
+}
+
+@media (max-width: 28rem) {
+  .pagination {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  span {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    text-align: center;
+  }
+}

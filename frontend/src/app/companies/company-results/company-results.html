@@ -1,0 +1,29 @@
+<ul class="results-list" aria-label="Company search results">
+  @for (company of companies(); track company.registrationNumber) {
+    <li class="company-card">
+      <div class="company-card__heading">
+        <h3>{{ company.name }}</h3>
+        @if (company.status) {
+          <span class="status" [class.status--inactive]="company.status !== 'Active'">
+            {{ company.status }}
+          </span>
+        }
+      </div>
+
+      <dl>
+        <div>
+          <dt>Registration number</dt>
+          <dd>{{ company.registrationNumber }}</dd>
+        </div>
+        <div>
+          <dt>Company type</dt>
+          <dd>{{ company.type || 'Not available' }}</dd>
+        </div>
+        <div class="address-row">
+          <dt>Registered address</dt>
+          <dd>{{ formatAddress(company) }}</dd>
+        </div>
+      </dl>
+    </li>
+  }
+</ul>
