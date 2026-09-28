@@ -15,6 +15,7 @@ export class MockCompanySearchService extends CompanySearchService {
         (company) => company.company_number.toLocaleLowerCase() === normalizedNumber,
       ) ?? null;
 
+    // A short delay makes loading and cancellation behavior realistic while using local fixtures.
     return of(profile).pipe(delay(250));
   }
 
@@ -23,6 +24,7 @@ export class MockCompanySearchService extends CompanySearchService {
     const page = Math.max(1, request.page);
     const pageSize = Math.max(1, request.pageSize);
     const queryKind = classifyCompanyQuery(query);
+    // Registration-number searches are exact; name searches intentionally support partial text.
     const matchingProfiles =
       queryKind === 'registrationNumber'
         ? MOCK_COMPANY_PROFILES.filter(
@@ -34,6 +36,8 @@ export class MockCompanySearchService extends CompanySearchService {
     const matches: readonly CompanySummary[] = matchingProfiles.map(mapCompaniesHouseProfile);
     const startIndex = (page - 1) * pageSize;
 
+    // Pagination is local for the mock. A future HTTP service can keep this public contract while
+    // delegating pagination to the backend if the backend adds page parameters.
     return of({
       items: matches.slice(startIndex, startIndex + pageSize),
       totalResults: matches.length,

@@ -1,5 +1,7 @@
 import { CompanySummary } from './company.model';
 
+// This type deliberately mirrors the snake_case Companies House response. Keeping the external
+// shape here makes the eventual HTTP implementation straightforward and avoids hidden renaming.
 export interface CompaniesHouseCompanyProfile {
   accounts?: {
     accounting_reference_date?: { day: string; month: string };
@@ -54,6 +56,8 @@ export interface CompaniesHouseCompanyProfile {
   has_super_secure_pscs?: boolean;
 }
 
+// Search results need only a compact subset of the full profile. Mapping at the service boundary
+// keeps API-specific snake_case fields out of the components that render those results.
 export function mapCompaniesHouseProfile(profile: CompaniesHouseCompanyProfile): CompanySummary {
   const address = profile.registered_office_address;
 

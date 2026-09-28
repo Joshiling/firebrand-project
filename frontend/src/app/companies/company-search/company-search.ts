@@ -54,6 +54,8 @@ export class CompanySearch {
   protected readonly currentPage = signal(1);
 
   constructor() {
+    // switchMap unsubscribes from an older request when a newer search starts. This prevents
+    // a slow, stale response from replacing the results of the user's latest search.
     this.requests
       .pipe(
         switchMap((request) =>
@@ -76,6 +78,8 @@ export class CompanySearch {
         this.result.set(outcome.result);
       });
 
+    // The URL is the source of truth when the page is opened, refreshed, or reached with Back.
+    // Restoring these values lets users return from a company profile without losing their search.
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       const query = params.get('q')?.trim() ?? '';
       if (!query) {
@@ -91,6 +95,8 @@ export class CompanySearch {
       this.submittedQuery.set(query);
       this.currentPage.set(page);
 
+      // Updating the URL after a search emits queryParamMap again. The key avoids sending the
+      // same request twice while still allowing Back/Forward to load a different query or page.
       if (requestKey !== this.lastRequestedKey) {
         this.requestPage(page);
       }
@@ -130,6 +136,8 @@ export class CompanySearch {
   }
 
   private updateSearchUrl(page: number): void {
+    // replaceUrl keeps pagination/search updates from filling browser history with intermediate
+    // entries. The details page still creates a normal history entry, so Back returns here.
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { q: this.lastSubmittedQuery, page },

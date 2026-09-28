@@ -57,6 +57,8 @@ export class CompanyDetails {
   protected readonly backQueryParams: Params;
 
   constructor() {
+    // Carry the originating search state into the Back link. Query parameters are optional so a
+    // directly opened company URL still works without inventing search values.
     const queryParams = this.route.snapshot.queryParamMap;
     const query = queryParams.get('q');
     const page = queryParams.get('page');
@@ -65,6 +67,8 @@ export class CompanyDetails {
       ...(page ? { page } : {}),
     };
 
+    // As on the search page, switchMap discards an older in-flight lookup if the route changes.
+    // Converting success and failure into values keeps all view-state updates in one subscription.
     this.requests
       .pipe(
         switchMap((registrationNumber) =>
@@ -127,6 +131,7 @@ export class CompanyDetails {
       return value;
     }
 
+    // Build the date in UTC so a date-only API value cannot shift by one day in another timezone.
     const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
     return new Intl.DateTimeFormat('en-GB', {
       day: 'numeric',
