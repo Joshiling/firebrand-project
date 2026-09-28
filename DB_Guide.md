@@ -2,6 +2,10 @@
 
 ## DB Structure
 
+
+
+![DB UML Diagram](DB_UML_Diagram.png)   
+
 **Companies**
    CompanyNumber (primary key) <--
 **search_log_companies**
