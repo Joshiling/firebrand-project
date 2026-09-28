@@ -4,6 +4,7 @@
     (click)="goTo(currentPage() - 1)"
     [disabled]="disabled() || currentPage() === 1"
   >
+    <ng-icon name="lucideChevronLeft" size="18" aria-hidden="true" />
     Previous
   </button>
   <span aria-live="polite">Page {{ currentPage() }} of {{ totalPages() }}</span>
@@ -13,5 +14,6 @@
     [disabled]="disabled() || currentPage() === totalPages()"
   >
     Next
+    <ng-icon name="lucideChevronRight" size="18" aria-hidden="true" />
   </button>
 </nav>

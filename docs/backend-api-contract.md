@@ -82,7 +82,7 @@ Return `200 OK` with `[]` when no companies match. The current Angular MVP will 
 GET /registry_id/00002065
 ```
 
-This route is reserved for retrieving full details for one company. It is not used by the current search-results screen. The path value remains a string.
+This route retrieves the full profile displayed by the CompanyLens details page after a user selects a search result. The Angular MVP currently exercises this flow through `MockCompanySearchService`; the future HTTP implementation will call this endpoint. The path value remains a string.
 
 ### Successful response
 
@@ -102,19 +102,19 @@ Return `200 OK` with one full company profile. The supplied Lloyds response is t
 }
 ```
 
-Additional Companies House profile fields can pass through unchanged. Return `404 Not Found` if the company does not exist.
+Additional Companies House profile fields can pass through unchanged. The details page handles accounts, confirmation statements, company flags, previous names, SIC codes, registered address, links, and missing optional fields. Return `404 Not Found` if the company does not exist.
 
 ## Error responses
 
 Use these HTTP statuses consistently for all three routes:
 
-| Status | Meaning |
-| --- | --- |
-| `400 Bad Request` | Missing or invalid name or registration number |
-| `404 Not Found` | Company details were not found |
-| `429 Too Many Requests` | Companies House rate limit was reached |
-| `502 Bad Gateway` | Companies House returned an unexpected failure or invalid response |
-| `503 Service Unavailable` | Companies House could not be reached or timed out |
+| Status                    | Meaning                                                            |
+| ------------------------- | ------------------------------------------------------------------ |
+| `400 Bad Request`         | Missing or invalid name or registration number                     |
+| `404 Not Found`           | Company details were not found                                     |
+| `429 Too Many Requests`   | Companies House rate limit was reached                             |
+| `502 Bad Gateway`         | Companies House returned an unexpected failure or invalid response |
+| `503 Service Unavailable` | Companies House could not be reached or timed out                  |
 
 Errors should return JSON without exposing API keys, upstream authorization headers, stack traces, or internal exception details. A minimal response is:
 

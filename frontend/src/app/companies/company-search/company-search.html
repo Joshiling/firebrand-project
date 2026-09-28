@@ -1,20 +1,27 @@
-<section class="search-panel" aria-labelledby="search-heading">
-  <div class="section-heading">
-    <p class="eyebrow">UK company records</p>
-    <h2 id="search-heading">Search for a company</h2>
-  </div>
+<div class="page-heading">
+  <p class="eyebrow">Client onboarding</p>
+  <h1>Find a UK company</h1>
+  <p class="page-heading__summary">Search company records by name or registration number.</p>
+</div>
 
+<section class="search-panel" aria-labelledby="search-heading">
   <form [formGroup]="searchForm" (ngSubmit)="submitSearch()" novalidate>
-    <label for="company-query">Company name or registration number</label>
+    <label id="search-heading" for="company-query">Company name or registration number</label>
     <div class="search-controls">
-      <input
-        id="company-query"
-        type="search"
-        formControlName="query"
-        autocomplete="off"
-        aria-describedby="query-hint query-error"
-        [attr.aria-invalid]="searchForm.controls.query.invalid && searchForm.controls.query.touched"
-      />
+      <div class="input-wrap">
+        <ng-icon name="lucideSearch" size="20" aria-hidden="true" />
+        <input
+          id="company-query"
+          type="search"
+          formControlName="query"
+          autocomplete="off"
+          placeholder="Search by company name or number"
+          aria-describedby="query-hint query-error"
+          [attr.aria-invalid]="
+            searchForm.controls.query.invalid && searchForm.controls.query.touched
+          "
+        />
+      </div>
       <button type="submit" [disabled]="loading()">
         @if (loading()) {
           <span class="spinner" aria-hidden="true"></span>
@@ -24,7 +31,7 @@
         }
       </button>
     </div>
-    <p id="query-hint" class="hint">For example, Tesco or 00445790</p>
+    <p id="query-hint" class="hint">Try “Lloyds” or “00002065”.</p>
     @if (searchForm.controls.query.invalid && searchForm.controls.query.touched) {
       <p id="query-error" class="validation" role="alert">
         Enter a company name or registration number.
@@ -37,7 +44,7 @@
   <div class="results-heading">
     <h2 id="results-heading">Results</h2>
     @if (result(); as searchResult) {
-      <span>{{ searchResult.totalResults }} found</span>
+      <span class="result-count">{{ searchResult.totalResults }} found</span>
     }
   </div>
 
@@ -58,12 +65,17 @@
     </div>
   } @else if (requestFailed()) {
     <div class="state-message state-message--error" role="alert">
+      <ng-icon name="lucideCircleAlert" size="28" aria-hidden="true" />
       <h3>We could not complete the search</h3>
       <p>Please try again. If the problem continues, the service may be temporarily unavailable.</p>
     </div>
   } @else if (result(); as searchResult) {
     @if (searchResult.items.length > 0) {
-      <app-company-results [companies]="searchResult.items" />
+      <app-company-results
+        [companies]="searchResult.items"
+        [searchQuery]="submittedQuery()"
+        [searchPage]="currentPage()"
+      />
       @if (searchResult.totalResults > pageSize) {
         <app-pagination
           [currentPage]="searchResult.page"
@@ -75,13 +87,16 @@
       }
     } @else {
       <div class="state-message">
+        <ng-icon name="lucideSearchX" size="28" aria-hidden="true" />
         <h3>No companies found</h3>
         <p>Check the spelling or try a different company name or registration number.</p>
       </div>
     }
   } @else {
     <div class="state-message state-message--empty">
-      <p>Your search results will appear here.</p>
+      <ng-icon name="lucideSearch" size="28" aria-hidden="true" />
+      <h3>Ready when you are</h3>
+      <p>Your company results will appear here.</p>
     </div>
   }
 </section>

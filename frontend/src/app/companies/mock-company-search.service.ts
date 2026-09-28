@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable, delay, of } from 'rxjs';
-import { mapCompaniesHouseProfile } from './companies-house-profile';
+import { CompaniesHouseCompanyProfile, mapCompaniesHouseProfile } from './companies-house-profile';
 import { CompanySearchPage, CompanySearchRequest, CompanySummary } from './company.model';
 import { classifyCompanyQuery } from './company-query';
 import { CompanySearchService } from './company-search.service';
@@ -8,6 +8,16 @@ import { MOCK_COMPANY_PROFILES } from './mock-companies';
 
 @Injectable()
 export class MockCompanySearchService extends CompanySearchService {
+  override getDetails(registrationNumber: string): Observable<CompaniesHouseCompanyProfile | null> {
+    const normalizedNumber = registrationNumber.trim().toLocaleLowerCase();
+    const profile =
+      MOCK_COMPANY_PROFILES.find(
+        (company) => company.company_number.toLocaleLowerCase() === normalizedNumber,
+      ) ?? null;
+
+    return of(profile).pipe(delay(250));
+  }
+
   override search(request: CompanySearchRequest): Observable<CompanySearchPage> {
     const query = request.query.trim().toLocaleLowerCase();
     const page = Math.max(1, request.page);

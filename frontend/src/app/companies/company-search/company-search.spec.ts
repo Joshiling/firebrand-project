@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { delay, Observable, of, throwError } from 'rxjs';
 import { CompanySearchPage, CompanySearchRequest } from '../company.model';
 import { CompanySearchService } from '../company-search.service';
@@ -20,6 +21,10 @@ class SearchServiceStub extends CompanySearchService {
   };
   shouldFail = false;
 
+  override getDetails() {
+    return of(null);
+  }
+
   override readonly search = vi.fn(
     (request: CompanySearchRequest): Observable<CompanySearchPage> => {
       if (this.shouldFail) {
@@ -39,7 +44,10 @@ describe('CompanySearch', () => {
     vi.useFakeTimers();
     await TestBed.configureTestingModule({
       imports: [CompanySearch],
-      providers: [{ provide: CompanySearchService, useClass: SearchServiceStub }],
+      providers: [
+        provideRouter([]),
+        { provide: CompanySearchService, useClass: SearchServiceStub },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(CompanySearch);

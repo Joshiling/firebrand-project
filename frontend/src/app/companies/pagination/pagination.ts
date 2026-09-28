@@ -1,10 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideChevronLeft, lucideChevronRight } from '@ng-icons/lucide';
 
 @Component({
   selector: 'app-pagination',
+  imports: [NgIcon],
   templateUrl: './pagination.html',
   styleUrl: './pagination.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [provideIcons({ lucideChevronLeft, lucideChevronRight })],
 })
 export class Pagination {
   readonly currentPage = input.required<number>();

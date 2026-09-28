@@ -1,11 +1,19 @@
 <ul class="results-list" aria-label="Company search results">
   @for (company of companies(); track company.registrationNumber) {
-    <li class="company-card">
+    <li class="company-row">
       <div class="company-card__heading">
-        <h3>{{ company.name }}</h3>
+        <h3>
+          <a
+            [routerLink]="['/companies', company.registrationNumber]"
+            [queryParams]="{ q: searchQuery(), page: searchPage() }"
+          >
+            <span>{{ company.name }}</span>
+            <ng-icon name="lucideArrowUpRight" size="18" aria-hidden="true" />
+          </a>
+        </h3>
         @if (company.status) {
-          <span class="status" [class.status--inactive]="company.status !== 'Active'">
-            {{ company.status }}
+          <span class="status" [class]="'status status--' + statusTone(company.status)">
+            {{ displayStatus(company.status) }}
           </span>
         }
       </div>

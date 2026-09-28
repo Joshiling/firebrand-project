@@ -1,8 +1,24 @@
+@import '@fontsource/source-sans-3/400.css';
+@import '@fontsource/source-sans-3/600.css';
+@import '@fontsource/source-sans-3/700.css';
+
 :root {
   color-scheme: light;
-  font-family: 'Trebuchet MS', Verdana, sans-serif;
+  font-family: 'Source Sans 3', sans-serif;
   font-synthesis: none;
-  background-color: #f4f7f6;
+  --color-canvas: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f0f3f7;
+  --color-text: #20242b;
+  --color-muted: #56606e;
+  --color-border: #d9dee7;
+  --color-border-strong: #adb6c4;
+  --color-action: #2457d6;
+  --color-action-hover: #1b43aa;
+  --color-danger: #b42318;
+  --focus-ring: 3px solid #f3b61f;
+  --focus-offset: 3px;
+  background-color: var(--color-canvas);
 }
 
 * {
@@ -11,19 +27,16 @@
 
 html {
   min-width: 20rem;
-  background: #f4f7f6;
+  background: var(--color-canvas);
 }
 
 body {
   min-width: 20rem;
   min-height: 100vh;
   margin: 0;
-  color: #243c39;
-  background-color: #f4f7f6;
-  background-image:
-    linear-gradient(rgb(20 108 101 / 4%) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(20 108 101 / 4%) 1px, transparent 1px);
-  background-size: 2rem 2rem;
+  color: var(--color-text);
+  background: var(--color-canvas);
+  text-rendering: optimizeLegibility;
 }
 
 button,
@@ -33,5 +46,16 @@ input {
 
 ::selection {
   color: #ffffff;
-  background: #146c65;
+  background: var(--color-action);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

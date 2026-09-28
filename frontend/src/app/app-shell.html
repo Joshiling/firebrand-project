@@ -1,18 +1,19 @@
 <header class="site-header">
   <div class="site-header__inner">
-    <a class="brand" href="/" aria-label="Company Search home">Company Search</a>
+    <a class="brand" routerLink="/" aria-label="CompanyLens home">
+      <span class="brand__mark" aria-hidden="true">
+        <ng-icon name="lucideBuilding2" size="20" />
+      </span>
+      <span>CompanyLens</span>
+    </a>
     <span class="environment">Sample data</span>
   </div>
 </header>
 
 <main>
-  <div class="page-heading">
-    <p>Client onboarding</p>
-    <h1>Company Search</h1>
-  </div>
-  <app-company-search />
+  <router-outlet />
 </main>
 
 <footer>
-  <p>Demonstration data only. Live Companies House data will be supplied by the project API.</p>
+  <p>CompanyLens uses demonstration data while the live company service is connected.</p>
 </footer>
