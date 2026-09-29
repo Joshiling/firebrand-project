@@ -19,6 +19,9 @@ public sealed class CompanySearchItemDto
     [JsonPropertyName("company_number")]
     public string? CompanyNumber { get; set; }
 
+    [JsonPropertyName("external_registration_number")]
+    public string? ExternalRegistrationNumber { get; set; }
+
     [JsonPropertyName("address_snippet")]
     public string? AddressSnippet { get; set; }
 

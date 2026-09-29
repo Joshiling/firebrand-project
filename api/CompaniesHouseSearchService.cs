@@ -1,16 +1,19 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
+using Api.Database;
 using Api.DTOs.CompaniesHouse;
 
 public sealed class CompaniesHouseSearchService(
     IHttpClientFactory httpClientFactory,
-    IConfiguration configuration) : ICompanySearchService
+    IConfiguration configuration,
+    ICompanyDatabaseService databaseService) : ICompanySearchService
 {
     private const int ItemsPerPage = 100;
     private const string HttpClientName = "CompaniesHouse";
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     private readonly ConcurrentDictionary<string, Company> _companies = new(StringComparer.OrdinalIgnoreCase);
 
@@ -20,58 +23,89 @@ public sealed class CompaniesHouseSearchService(
     {
         var apiKey = GetApiKey();
         var companies = new List<CompanySearch>();
-        var seenRegistryIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var dbRecords = new List<CompanyDbRecord>();
+        var seenCompanyNumbers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var startIndex = 0;
         var totalResults = int.MaxValue;
         var client = httpClientFactory.CreateClient(HttpClientName);
+        string? firstPageRawJson = null;
 
-        while (startIndex < totalResults)
+        try
         {
-            var path = $"search/companies?q={Uri.EscapeDataString(searchTerm)}&items_per_page={ItemsPerPage}&start_index={startIndex}";
-            var page = await GetJsonAsync<CompanySearchResponseDto>(client, path, apiKey, cancellationToken);
-            var items = page.Items ?? [];
-            totalResults = page.TotalResults ?? items.Count;
-
-            if (items.Count == 0)
+            while (startIndex < totalResults)
             {
-                break;
-            }
+                var path = $"search/companies?q={Uri.EscapeDataString(searchTerm)}&items_per_page={ItemsPerPage}&start_index={startIndex}";
+                var (page, rawJson) = await GetJsonWithRawAsync<CompanySearchResponseDto>(client, path, apiKey, cancellationToken);
+                firstPageRawJson ??= rawJson;
+                var items = page.Items ?? [];
+                totalResults = page.TotalResults ?? items.Count;
 
-            foreach (var item in items)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (string.IsNullOrWhiteSpace(item.CompanyNumber)
-                    || !seenRegistryIds.Add(item.CompanyNumber))
+                if (items.Count == 0)
                 {
-                    continue;
+                    break;
                 }
 
-                if (string.IsNullOrWhiteSpace(item.Title))
+                foreach (var item in items)
                 {
-                    continue;
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    if (string.IsNullOrWhiteSpace(item.CompanyNumber)
+                        || !seenCompanyNumbers.Add(item.CompanyNumber))
+                    {
+                        continue;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(item.Title))
+                    {
+                        continue;
+                    }
+
+                    var company = ToCompany(item);
+                    _companies.TryAdd(company.RegistryId, company);
+                    companies.Add(ToCompanySearch(company));
+
+                    dbRecords.Add(new CompanyDbRecord
+                    {
+                        CompanyNumber = item.CompanyNumber,
+                        CompanyName = item.Title,
+                        CompanyStatus = item.CompanyStatus,
+                        IncorporationDate = item.DateOfCreation?.ToString("yyyy-MM-dd"),
+                        Address = FormatAddress(item.Address) ?? item.AddressSnippet,
+                        ExternalRegistrationNumber = item.ExternalRegistrationNumber
+                    });
                 }
 
-                var company = ToCompany(item);
-                _companies.TryAdd(company.RegistryId, company);
-                companies.Add(ToCompanySearch(company));
+                startIndex += items.Count;
             }
 
-            startIndex += items.Count;
+            await databaseService.SaveSearchLogAsync(
+                searchTerm,
+                StatusCodes.Status200OK,
+                totalResults == int.MaxValue ? companies.Count : totalResults,
+                firstPageRawJson,
+                dbRecords,
+                cancellationToken);
+
+            return companies;
         }
+        catch (CompaniesHouseApiException exception)
+        {
+            await databaseService.SaveSearchLogAsync(
+                searchTerm,
+                exception.StatusCode,
+                0,
+                exception.Message,
+                Array.Empty<CompanyDbRecord>(),
+                cancellationToken);
 
-        return companies;
+            throw;
+        }
     }
 
     public async Task<Company?> GetByRegistryIdAsync(
         string registryId,
         CancellationToken cancellationToken)
     {
-        if (_companies.TryGetValue(registryId, out var cachedCompany))
-        {
-            return cachedCompany;
-        }
-
         var apiKey = GetApiKey();
         var client = httpClientFactory.CreateClient(HttpClientName);
         return await GetCompanyProfileAsync(
@@ -113,16 +147,31 @@ public sealed class CompaniesHouseSearchService(
 
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
+            await databaseService.SaveSearchLogAsync(
+                registryId,
+                StatusCodes.Status404NotFound,
+                0,
+                null,
+                Array.Empty<CompanyDbRecord>(),
+                cancellationToken);
             return null;
         }
 
         if (!response.IsSuccessStatusCode)
         {
-            throw CreateApiException(response.StatusCode);
+            var exception = CreateApiException(response.StatusCode);
+            await databaseService.SaveSearchLogAsync(
+                registryId,
+                exception.StatusCode,
+                0,
+                response.ReasonPhrase,
+                Array.Empty<CompanyDbRecord>(),
+                cancellationToken);
+            throw exception;
         }
 
-        var profile = await response.Content.ReadFromJsonAsync<CompanyProfileDto>(
-            cancellationToken: cancellationToken);
+        var rawJson = await response.Content.ReadAsStringAsync(cancellationToken);
+        var profile = JsonSerializer.Deserialize<CompanyProfileDto>(rawJson, JsonOptions);
 
         if (profile is null)
         {
@@ -151,10 +200,29 @@ public sealed class CompaniesHouseSearchService(
         };
 
         _companies[company.RegistryId] = company;
+
+        var dbRecord = new CompanyDbRecord
+        {
+            CompanyNumber = companyNumber,
+            CompanyName = companyName,
+            CompanyStatus = profile.CompanyStatus,
+            IncorporationDate = profile.DateOfCreation?.ToString("yyyy-MM-dd"),
+            Address = company.Address,
+            ExternalRegistrationNumber = profile.ExternalRegistrationNumber ?? profile.ForeignCompanyDetails?.RegistrationNumber
+        };
+
+        await databaseService.SaveSearchLogAsync(
+            registryId,
+            StatusCodes.Status200OK,
+            1,
+            rawJson,
+            new[] { dbRecord },
+            cancellationToken);
+
         return company;
     }
 
-    private async Task<T> GetJsonAsync<T>(
+    private async Task<(T Value, string RawJson)> GetJsonWithRawAsync<T>(
         HttpClient client,
         string path,
         string apiKey,
@@ -167,12 +235,12 @@ public sealed class CompaniesHouseSearchService(
             throw CreateApiException(response.StatusCode);
         }
 
-        var result = await response.Content.ReadFromJsonAsync<T>(
-            cancellationToken: cancellationToken);
+        var rawJson = await response.Content.ReadAsStringAsync(cancellationToken);
+        var result = JsonSerializer.Deserialize<T>(rawJson, JsonOptions);
 
-        return result ?? throw new CompaniesHouseApiException(
+        return (result ?? throw new CompaniesHouseApiException(
             "Companies House returned an empty search response.",
-            StatusCodes.Status502BadGateway);
+            StatusCodes.Status502BadGateway), rawJson);
     }
 
     private static async Task<HttpResponseMessage> SendAsync(

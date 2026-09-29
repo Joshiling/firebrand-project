@@ -12,6 +12,12 @@ public class CompanyProfileDto
     [JsonPropertyName("company_number")]
     public string? CompanyNumber { get; set; }
 
+    [JsonPropertyName("external_registration_number")]
+    public string? ExternalRegistrationNumber { get; set; }
+
+    [JsonPropertyName("foreign_company_details")]
+    public ForeignCompanyDetailsDto? ForeignCompanyDetails { get; set; }
+
     [JsonPropertyName("company_status")]
     public string? CompanyStatus { get; set; }
 
@@ -23,4 +29,10 @@ public class CompanyProfileDto
 
     [JsonPropertyName("registered_office_address")]
     public RegisteredOfficeAddressDto? RegisteredOfficeAddress { get; set; }
+}
+
+public sealed class ForeignCompanyDetailsDto
+{
+    [JsonPropertyName("registration_number")]
+    public string? RegistrationNumber { get; set; }
 }
