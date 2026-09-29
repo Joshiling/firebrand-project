@@ -1,0 +1,50 @@
+erDiagram
+    Companies ||--o{ search_log_companies : "appears in"
+    search_logs ||--o{ search_log_companies : "links results"
+    Companies ||--o{ CompanyHistory : "has versions"
+    search_logs o|--o{ CompanyHistory : "records change"
+
+    Companies {
+        TEXT CompanyNumber PK
+        TEXT CompanyName
+        TEXT CompanyStatus
+        TEXT IncorporationDate
+        TEXT Address
+        TEXT ExternalRegistrationNumber
+        INTEGER CurrentVersion
+        TEXT ContentHash
+        TEXT LastSeenAt
+    }
+
+    search_logs {
+        INTEGER SearchLogId PK
+        TEXT UserInput
+        TEXT SearchedAt
+        TEXT ApiResponse
+        INTEGER ResultCount
+        INTEGER HttpStatus
+    }
+
+    search_log_companies {
+        INTEGER SearchLogId PK,FK
+        TEXT CompanyNumber PK,FK
+    }
+
+    CompanyHistory {
+        INTEGER HistoryId PK
+        TEXT CompanyNumber FK
+        INTEGER VersionNumber
+        TEXT CompanyName
+        TEXT CompanyStatus
+        TEXT IncorporationDate
+        TEXT Address
+        TEXT ExternalRegistrationNumber
+        TEXT ContentHash
+        TEXT RecordedAt
+        INTEGER SearchLogId FK
+    }
+
+    SchemaMigrations {
+        TEXT MigrationId PK
+        TEXT AppliedAt
+    }
