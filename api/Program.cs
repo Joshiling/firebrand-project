@@ -14,6 +14,7 @@ builder.Services.AddHttpClient("CompaniesHouse", client =>
 
     client.BaseAddress = new Uri(baseUrl);
 });
+builder.Services.AddSingleton<ICompanyDatabaseService, CompanyDatabaseService>();
 builder.Services.AddSingleton<ICompanySearchService, CompaniesHouseSearchService>();
 
 var app = builder.Build();
