@@ -37,7 +37,8 @@ public static class CompanyEndpoints
         [FromQuery(Name = "registry_id")] string? registryId,
         [FromQuery(Name = "company_status")] CompanyStatusFilter[]? companyStatuses,
         [FromQuery(Name = "company_type")] CompanyTypeFilter[]? companyTypes,
-        [FromQuery(Name = "location")] string? location,
+        [FromQuery(Name = "city")] string? city,
+        [FromQuery(Name = "country")] RegisteredOfficeCountryFilter? country,
         ICompanySearchService companySearchService,
         CancellationToken cancellationToken)
     {
@@ -47,7 +48,7 @@ public static class CompanyEndpoints
                 "The registry_id query parameter must contain digits, optionally preceded by two letters."));
         }
 
-        var filters = CreateFilters(companyStatuses, companyTypes, location, out var validationError);
+        var filters = CreateFilters(companyStatuses, companyTypes, city, country, out var validationError);
         if (filters is null)
         {
             return TypedResults.BadRequest(CreateValidationProblem(validationError!));
@@ -60,7 +61,8 @@ public static class CompanyEndpoints
         [FromQuery(Name = "name")] string? name,
         [FromQuery(Name = "company_status")] CompanyStatusFilter[]? companyStatuses,
         [FromQuery(Name = "company_type")] CompanyTypeFilter[]? companyTypes,
-        [FromQuery(Name = "location")] string? location,
+        [FromQuery(Name = "city")] string? city,
+        [FromQuery(Name = "country")] RegisteredOfficeCountryFilter? country,
         ICompanySearchService companySearchService,
         CancellationToken cancellationToken)
     {
@@ -70,7 +72,7 @@ public static class CompanyEndpoints
                 "The name query parameter is required."));
         }
 
-        var filters = CreateFilters(companyStatuses, companyTypes, location, out var validationError);
+        var filters = CreateFilters(companyStatuses, companyTypes, city, country, out var validationError);
         if (filters is null)
         {
             return TypedResults.BadRequest(CreateValidationProblem(validationError!));
@@ -124,10 +126,11 @@ public static class CompanyEndpoints
     private static CompanySearchFilters? CreateFilters(
         CompanyStatusFilter[]? companyStatuses,
         CompanyTypeFilter[]? companyTypes,
-        string? location,
+        string? city,
+        RegisteredOfficeCountryFilter? country,
         out string? validationError)
     {
-        var normalizedLocation = location?.Trim();
+        var normalizedCity = city?.Trim();
 
         if ((companyStatuses ?? []).Any(value => !Enum.IsDefined(value)))
         {
@@ -141,9 +144,15 @@ public static class CompanyEndpoints
             return null;
         }
 
-        if (location is not null && (string.IsNullOrWhiteSpace(normalizedLocation) || normalizedLocation.Length > 100))
+        if (city is not null && (string.IsNullOrWhiteSpace(normalizedCity) || normalizedCity.Length > 100))
         {
-            validationError = "The location filter must contain 1 to 100 characters.";
+            validationError = "The city filter must contain 1 to 100 characters.";
+            return null;
+        }
+
+        if (country.HasValue && !Enum.IsDefined(country.Value))
+        {
+            validationError = "The country filter must be a supported option.";
             return null;
         }
 
@@ -152,7 +161,8 @@ public static class CompanyEndpoints
         {
             CompanyStatuses = (companyStatuses ?? []).Distinct().ToArray(),
             CompanyTypes = (companyTypes ?? []).Distinct().ToArray(),
-            Location = normalizedLocation
+            City = normalizedCity,
+            Country = country
         };
     }
 

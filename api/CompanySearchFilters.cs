@@ -9,11 +9,14 @@ public sealed record CompanySearchFilters
 
     public IReadOnlyList<CompanyTypeFilter> CompanyTypes { get; init; } = [];
 
-    public string? Location { get; init; }
+    public string? City { get; init; }
+
+    public RegisteredOfficeCountryFilter? Country { get; init; }
 
     public bool HasFilters => CompanyStatuses.Count > 0
         || CompanyTypes.Count > 0
-        || !string.IsNullOrWhiteSpace(Location);
+        || !string.IsNullOrWhiteSpace(City)
+        || Country.HasValue;
 }
 
 /// <summary>Companies House company status values available as search filters.</summary>
@@ -108,6 +111,26 @@ public enum CompanyTypeFilter
     UkEstablishment,
     [EnumMember(Value = "scottish-partnership")]
     ScottishPartnership
+}
+
+/// <summary>Country values reported for Companies House registered-office addresses.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum RegisteredOfficeCountryFilter
+{
+    [EnumMember(Value = "Wales")]
+    Wales,
+    [EnumMember(Value = "England")]
+    England,
+    [EnumMember(Value = "Scotland")]
+    Scotland,
+    [EnumMember(Value = "Great Britain")]
+    GreatBritain,
+    [EnumMember(Value = "Not specified")]
+    NotSpecified,
+    [EnumMember(Value = "United Kingdom")]
+    UnitedKingdom,
+    [EnumMember(Value = "Northern Ireland")]
+    NorthernIreland
 }
 
 public static class CompanySearchFilterValues

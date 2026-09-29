@@ -313,9 +313,12 @@ public sealed class CompaniesHouseSearchService(
             query.Add(new KeyValuePair<string, string?>("company_type", type.ToCompaniesHouseValue()));
         }
 
-        if (!string.IsNullOrWhiteSpace(filters.Location))
+        var upstreamLocation = !string.IsNullOrWhiteSpace(filters.City)
+            ? filters.City
+            : filters.Country?.ToCompaniesHouseValue();
+        if (!string.IsNullOrWhiteSpace(upstreamLocation))
         {
-            query.Add(new KeyValuePair<string, string?>("location", filters.Location));
+            query.Add(new KeyValuePair<string, string?>("location", upstreamLocation));
         }
 
         return QueryHelpers.AddQueryString("advanced-search/companies", query);
@@ -353,11 +356,15 @@ public sealed class CompaniesHouseSearchService(
                 type.ToCompaniesHouseValue(),
                 item.CompanyType,
                 StringComparison.OrdinalIgnoreCase));
-        var address = FormatAddress(item.Address) ?? item.AddressSnippet;
-        var matchesLocation = string.IsNullOrWhiteSpace(filters.Location)
-            || (address?.Contains(filters.Location, StringComparison.OrdinalIgnoreCase) ?? false);
+        var matchesCity = string.IsNullOrWhiteSpace(filters.City)
+            || string.Equals(item.Address?.Locality, filters.City, StringComparison.OrdinalIgnoreCase);
+        var matchesCountry = !filters.Country.HasValue
+            || string.Equals(
+                item.Address?.Country,
+                filters.Country.Value.ToCompaniesHouseValue(),
+                StringComparison.OrdinalIgnoreCase);
 
-        return matchesStatus && matchesType && matchesLocation;
+        return matchesStatus && matchesType && matchesCity && matchesCountry;
     }
 
     private static string FormatSearchLogInput(string searchTerm, CompanySearchFilters? filters)
@@ -378,9 +385,14 @@ public sealed class CompaniesHouseSearchService(
             filterParts.Add($"company_type={string.Join(',', filters.CompanyTypes.Select(value => value.ToCompaniesHouseValue()))}");
         }
 
-        if (!string.IsNullOrWhiteSpace(filters.Location))
+        if (!string.IsNullOrWhiteSpace(filters.City))
         {
-            filterParts.Add($"location={filters.Location}");
+            filterParts.Add($"city={filters.City}");
+        }
+
+        if (filters.Country.HasValue)
+        {
+            filterParts.Add($"country={filters.Country.Value.ToCompaniesHouseValue()}");
         }
 
         return $"{searchTerm} [{string.Join("; ", filterParts)}]";

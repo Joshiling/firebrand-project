@@ -90,7 +90,8 @@ public sealed class CompaniesHouseSearchServiceTests
                                     "company_type": "plc",
                                     "registered_office_address": {
                                         "address_line_1": "25 Gresham Street",
-                                        "locality": "London"
+                                        "locality": "London",
+                                        "country": "England"
                                     }
                                 }
                             ],
@@ -110,7 +111,8 @@ public sealed class CompaniesHouseSearchServiceTests
                 {
                     CompanyStatuses = [CompanyStatusFilter.Active, CompanyStatusFilter.Dissolved],
                     CompanyTypes = [CompanyTypeFilter.Plc],
-                    Location = "London"
+                    City = "London",
+                    Country = RegisteredOfficeCountryFilter.England
                 },
                 CancellationToken.None);
 
@@ -128,7 +130,7 @@ public sealed class CompaniesHouseSearchServiceTests
         Assert.Equal("London", query["location"]);
         Assert.Equal("100", query["size"]);
         Assert.Equal("0", query["start_index"]);
-        Assert.Equal("Lloyds & Co [company_status=active,dissolved; company_type=plc; location=London]", _databaseService.SavedLogs[0].UserInput);
+        Assert.Equal("Lloyds & Co [company_status=active,dissolved; company_type=plc; city=London; country=England]", _databaseService.SavedLogs[0].UserInput);
     }
 
     [Fact]
@@ -142,7 +144,7 @@ public sealed class CompaniesHouseSearchServiceTests
                                     "title": "LLOYDS BANK PLC",
                                     "company_status": "active",
                                     "company_type": "plc",
-                                    "address": { "address_line_1": "25 Gresham Street", "locality": "London" }
+                                    "address": { "address_line_1": "25 Gresham Street", "locality": "London", "country": "England" }
                                 },
                                 {
                                     "company_number": "00002066",
@@ -168,7 +170,8 @@ public sealed class CompaniesHouseSearchServiceTests
                 {
                     CompanyStatuses = [CompanyStatusFilter.Active],
                     CompanyTypes = [CompanyTypeFilter.Plc],
-                    Location = "london"
+                    City = "london",
+                    Country = RegisteredOfficeCountryFilter.England
                 },
                 CancellationToken.None);
 
@@ -177,7 +180,7 @@ public sealed class CompaniesHouseSearchServiceTests
         Assert.NotNull(requestUri);
         Assert.Equal("/search/companies", requestUri.AbsolutePath);
         Assert.Equal("00002065", QueryHelpers.ParseQuery(requestUri.Query)["q"]);
-        Assert.Equal("00002065 [company_status=active; company_type=plc; location=london]", _databaseService.SavedLogs[0].UserInput);
+        Assert.Equal("00002065 [company_status=active; company_type=plc; city=london; country=England]", _databaseService.SavedLogs[0].UserInput);
         Assert.Equal(1, _databaseService.SavedLogs[0].ResultCount);
     }
 
@@ -196,6 +199,70 @@ public sealed class CompaniesHouseSearchServiceTests
         Assert.Equal(200, _databaseService.SavedLogs[0].HttpStatus);
         Assert.Equal(0, _databaseService.SavedLogs[0].ResultCount);
     }
+
+        [Fact]
+        public async Task SearchByNameAsync_LocationDoesNotMatchStreetNameInsteadOfLocality()
+        {
+                const string searchJson = """
+                        {
+                            "items": [
+                                {
+                                    "company_name": "WINSTANLEY COMPANY LTD",
+                                    "company_number": "00002065",
+                                    "company_status": "active",
+                                    "company_type": "ltd",
+                                    "registered_office_address": {
+                                        "address_line_1": "3 Paris Avenue",
+                                        "locality": "Wigan",
+                                        "postal_code": "WN3 6FA",
+                                        "country": "England"
+                                    }
+                                }
+                            ],
+                            "total_results": 1
+                        }
+                        """;
+                var httpClientFactory = CreateHttpClientFactory(HttpStatusCode.OK, searchJson);
+                var service = new CompaniesHouseSearchService(httpClientFactory, CreateConfiguration(), _databaseService);
+
+                var results = await service.SearchByNameAsync(
+                        "Winstanley",
+                        new CompanySearchFilters { City = "Paris" },
+                        CancellationToken.None);
+
+                Assert.Empty(results);
+        }
+
+        [Fact]
+        public async Task SearchByNameAsync_CountryFilterMatchesRegisteredOfficeCountry()
+        {
+                const string searchJson = """
+                        {
+                            "items": [
+                                {
+                                    "company_name": "LONDON COMPANY LTD",
+                                    "company_number": "00002065",
+                                    "company_status": "active",
+                                    "company_type": "ltd",
+                                    "registered_office_address": {
+                                        "locality": "London",
+                                        "country": "England"
+                                    }
+                                }
+                            ],
+                            "total_results": 1
+                        }
+                        """;
+                var httpClientFactory = CreateHttpClientFactory(HttpStatusCode.OK, searchJson);
+                var service = new CompaniesHouseSearchService(httpClientFactory, CreateConfiguration(), _databaseService);
+
+                var results = await service.SearchByNameAsync(
+                        "London Company",
+                        new CompanySearchFilters { Country = RegisteredOfficeCountryFilter.Scotland },
+                        CancellationToken.None);
+
+                Assert.Empty(results);
+        }
 
     [Fact]
     public async Task GetByRegistryIdAsync_OnSuccess_LogsLookupAndReturnsCompany()
