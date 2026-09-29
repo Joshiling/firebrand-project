@@ -85,6 +85,31 @@ public sealed class CompaniesHouseSearchService(
                 firstPageRawJson,
                 dbRecords,
                 cancellationToken);
+        var seenRegistryIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var client = httpClientFactory.CreateClient(HttpClientName);
+        var path = $"search/companies?q={Uri.EscapeDataString(searchTerm)}&items_per_page={ItemsPerPage}&start_index=0";
+        var page = await GetJsonAsync<CompanySearchResponseDto>(client, path, apiKey, cancellationToken);
+
+        // Companies House limits how far callers can page into broad searches. Returning the first
+        // 100 matches keeps this MVP responsive and avoids a 416 response for names such as Lloyds.
+        foreach (var item in page.Items ?? [])
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (string.IsNullOrWhiteSpace(item.CompanyNumber)
+                || !seenRegistryIds.Add(item.CompanyNumber))
+            {
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(item.Title))
+            {
+                continue;
+            }
+
+            var company = ToCompany(item);
+            companies.Add(ToCompanySearch(company));
+        }
 
             return companies;
         }
@@ -190,13 +215,27 @@ public sealed class CompaniesHouseSearchService(
 
         var company = new Company
         {
+            Accounts = profile.Accounts,
+            CanFile = profile.CanFile,
             Name = companyName,
             RegistryId = companyNumber,
             Address = FormatAddress(profile.RegisteredOfficeAddress) ?? fallbackAddress,
             CompanyStatus = profile.CompanyStatus,
             CompanyType = profile.CompanyType,
+            ConfirmationStatement = profile.ConfirmationStatement,
             DateOfCreation = profile.DateOfCreation,
-            RegisteredOfficeAddress = profile.RegisteredOfficeAddress
+            Etag = profile.Etag,
+            HasCharges = profile.HasCharges,
+            HasInsolvencyHistory = profile.HasInsolvencyHistory,
+            HasSuperSecurePscs = profile.HasSuperSecurePscs,
+            Jurisdiction = profile.Jurisdiction,
+            LastFullMembersListDate = profile.LastFullMembersListDate,
+            Links = profile.Links,
+            PreviousCompanyNames = profile.PreviousCompanyNames,
+            RegisteredOfficeAddress = profile.RegisteredOfficeAddress,
+            RegisteredOfficeIsInDispute = profile.RegisteredOfficeIsInDispute,
+            SicCodes = profile.SicCodes,
+            UndeliverableRegisteredOfficeAddress = profile.UndeliverableRegisteredOfficeAddress
         };
 
         _companies[company.RegistryId] = company;
@@ -312,6 +351,8 @@ public sealed class CompaniesHouseSearchService(
     {
         Name = company.Name,
         RegistryId = company.RegistryId,
-        Address = company.Address
+        Address = company.Address,
+        CompanyStatus = company.CompanyStatus,
+        CompanyType = company.CompanyType
     };
 }

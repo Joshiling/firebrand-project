@@ -1,0 +1,27 @@
+export interface RegisteredAddress {
+  addressLine1?: string;
+  addressLine2?: string;
+  locality?: string;
+  postalCode?: string;
+}
+
+export interface CompanySummary {
+  name: string;
+  registrationNumber: string;
+  status?: string;
+  type?: string;
+  registeredAddress?: RegisteredAddress;
+}
+
+export interface CompanySearchRequest {
+  query: string;
+  page: number;
+  pageSize: number;
+}
+
+export interface CompanySearchPage {
+  items: readonly CompanySummary[];
+  totalResults: number;
+  page: number;
+  pageSize: number;
+}

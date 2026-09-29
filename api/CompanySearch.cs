@@ -8,4 +8,8 @@ public sealed record CompanySearch
     public string CompanyNumber => RegistryId;
 
     public string? Address { get; init; }
+
+    public string? CompanyStatus { get; init; }
+
+    public string? CompanyType { get; init; }
 }

@@ -1,0 +1,253 @@
+<a class="back-link" routerLink="/" [queryParams]="backQueryParams">
+  <ng-icon name="lucideArrowLeft" size="18" aria-hidden="true" />
+  Back to results
+</a>
+
+@if (loading()) {
+  <section class="state-panel" aria-live="polite" aria-busy="true">
+    <span class="spinner" aria-hidden="true"></span>
+    <h1>Loading company details</h1>
+    <p>Retrieving the full company profile...</p>
+  </section>
+} @else if (requestFailed()) {
+  <section class="state-panel state-panel--error" role="alert">
+    <ng-icon name="lucideCircleAlert" size="30" aria-hidden="true" />
+    <h1>We could not load this company</h1>
+    <p>The company service may be temporarily unavailable.</p>
+    <button type="button" (click)="retry()">
+      <ng-icon name="lucideRefreshCw" size="18" aria-hidden="true" />
+      Try again
+    </button>
+  </section>
+} @else if (notFound()) {
+  <section class="state-panel">
+    <ng-icon name="lucideSearchX" size="30" aria-hidden="true" />
+    <h1>Company not found</h1>
+    <p>Check the registration number or return to the search results.</p>
+  </section>
+} @else if (profile(); as company) {
+  <article class="company-profile">
+    <header class="profile-header">
+      <div>
+        <p class="eyebrow">Company profile</p>
+        <h1>{{ company.company_name }}</h1>
+        <p class="registration-number">Registration number {{ company.company_number }}</p>
+      </div>
+      @if (company.company_status) {
+        <span class="status" [class]="'status status--' + statusTone(company.company_status)">
+          {{ formatLabel(company.company_status) }}
+        </span>
+      }
+    </header>
+
+    <div class="details-grid">
+      <section class="detail-section" aria-labelledby="overview-heading">
+        <div class="section-heading">
+          <ng-icon name="lucideBuilding2" size="21" aria-hidden="true" />
+          <h2 id="overview-heading">Overview</h2>
+        </div>
+        <dl>
+          <div>
+            <dt>Company type</dt>
+            <dd>{{ formatLabel(company.type) }}</dd>
+          </div>
+          <div>
+            <dt>Incorporated</dt>
+            <dd>{{ formatDate(company.date_of_creation) }}</dd>
+          </div>
+          <div>
+            <dt>Jurisdiction</dt>
+            <dd>{{ formatLabel(company.jurisdiction) }}</dd>
+          </div>
+          <div>
+            <dt>SIC codes</dt>
+            <dd>
+              {{ company.sic_codes?.length ? company.sic_codes?.join(', ') : 'Not available' }}
+            </dd>
+          </div>
+          <div>
+            <dt>Last full members list</dt>
+            <dd>{{ formatDate(company.last_full_members_list_date) }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="detail-section" aria-labelledby="address-heading">
+        <div class="section-heading">
+          <ng-icon name="lucideMapPin" size="21" aria-hidden="true" />
+          <h2 id="address-heading">Registered address</h2>
+        </div>
+        <p class="address">{{ formatAddress(company) }}</p>
+      </section>
+
+      <section class="detail-section detail-section--wide" aria-labelledby="accounts-heading">
+        <div class="section-heading">
+          <ng-icon name="lucideLandmark" size="21" aria-hidden="true" />
+          <h2 id="accounts-heading">Accounts</h2>
+        </div>
+        @if (company.accounts; as accounts) {
+          <dl class="data-grid">
+            <div>
+              <dt>Accounting reference date</dt>
+              <dd>
+                @if (accounts.accounting_reference_date; as referenceDate) {
+                  {{ referenceDate.day }}/{{ referenceDate.month }}
+                } @else {
+                  Not available
+                }
+              </dd>
+            </div>
+            <div>
+              <dt>Next accounts due</dt>
+              <dd>{{ formatDate(accounts.next_due) }}</dd>
+            </div>
+            <div>
+              <dt>Next made up to</dt>
+              <dd>{{ formatDate(accounts.next_made_up_to) }}</dd>
+            </div>
+            <div>
+              <dt>Accounts overdue</dt>
+              <dd>{{ booleanLabel(accounts.overdue) }}</dd>
+            </div>
+            <div>
+              <dt>Last accounts type</dt>
+              <dd>{{ formatLabel(accounts.last_accounts?.type) }}</dd>
+            </div>
+            <div>
+              <dt>Last period start</dt>
+              <dd>{{ formatDate(accounts.last_accounts?.period_start_on) }}</dd>
+            </div>
+            <div>
+              <dt>Last period end</dt>
+              <dd>{{ formatDate(accounts.last_accounts?.period_end_on) }}</dd>
+            </div>
+            <div>
+              <dt>Last made up to</dt>
+              <dd>{{ formatDate(accounts.last_accounts?.made_up_to) }}</dd>
+            </div>
+            <div>
+              <dt>Next period start</dt>
+              <dd>{{ formatDate(accounts.next_accounts?.period_start_on) }}</dd>
+            </div>
+            <div>
+              <dt>Next period end</dt>
+              <dd>{{ formatDate(accounts.next_accounts?.period_end_on) }}</dd>
+            </div>
+            <div>
+              <dt>Next filing due</dt>
+              <dd>{{ formatDate(accounts.next_accounts?.due_on) }}</dd>
+            </div>
+            <div>
+              <dt>Next filing overdue</dt>
+              <dd>{{ booleanLabel(accounts.next_accounts?.overdue) }}</dd>
+            </div>
+          </dl>
+        } @else {
+          <p class="missing-data">Accounts information is not available.</p>
+        }
+      </section>
+
+      <section class="detail-section" aria-labelledby="confirmation-heading">
+        <div class="section-heading">
+          <ng-icon name="lucideFileClock" size="21" aria-hidden="true" />
+          <h2 id="confirmation-heading">Confirmation statement</h2>
+        </div>
+        @if (company.confirmation_statement; as statement) {
+          <dl>
+            <div>
+              <dt>Last made up to</dt>
+              <dd>{{ formatDate(statement.last_made_up_to) }}</dd>
+            </div>
+            <div>
+              <dt>Next made up to</dt>
+              <dd>{{ formatDate(statement.next_made_up_to) }}</dd>
+            </div>
+            <div>
+              <dt>Next due</dt>
+              <dd>{{ formatDate(statement.next_due) }}</dd>
+            </div>
+            <div>
+              <dt>Overdue</dt>
+              <dd>{{ booleanLabel(statement.overdue) }}</dd>
+            </div>
+          </dl>
+        } @else {
+          <p class="missing-data">Confirmation statement information is not available.</p>
+        }
+      </section>
+
+      <section class="detail-section" aria-labelledby="flags-heading">
+        <div class="section-heading">
+          <ng-icon name="lucideShieldCheck" size="21" aria-hidden="true" />
+          <h2 id="flags-heading">Company flags</h2>
+        </div>
+        <dl>
+          <div>
+            <dt>Can file</dt>
+            <dd>{{ booleanLabel(company.can_file) }}</dd>
+          </div>
+          <div>
+            <dt>Has charges</dt>
+            <dd>{{ booleanLabel(company.has_charges) }}</dd>
+          </div>
+          <div>
+            <dt>Insolvency history</dt>
+            <dd>{{ booleanLabel(company.has_insolvency_history) }}</dd>
+          </div>
+          <div>
+            <dt>Address in dispute</dt>
+            <dd>{{ booleanLabel(company.registered_office_is_in_dispute) }}</dd>
+          </div>
+          <div>
+            <dt>Undeliverable address</dt>
+            <dd>{{ booleanLabel(company.undeliverable_registered_office_address) }}</dd>
+          </div>
+          <div>
+            <dt>Super-secure PSCs</dt>
+            <dd>{{ booleanLabel(company.has_super_secure_pscs) }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="detail-section detail-section--wide" aria-labelledby="history-heading">
+        <div class="section-heading">
+          <ng-icon name="lucideHistory" size="21" aria-hidden="true" />
+          <h2 id="history-heading">Previous company names</h2>
+        </div>
+        @if (company.previous_company_names?.length) {
+          <ol class="history-list">
+            @for (
+              previousName of company.previous_company_names;
+              track previousName.name + previousName.effective_from
+            ) {
+              <li>
+                <strong>{{ previousName.name }}</strong>
+                <span>{{
+                  formatDateRange(previousName.effective_from, previousName.ceased_on)
+                }}</span>
+              </li>
+            }
+          </ol>
+        } @else {
+          <p class="missing-data">No previous company names are available.</p>
+        }
+      </section>
+    </div>
+
+    <details class="technical-details">
+      <summary>Technical information</summary>
+      <dl>
+        <div>
+          <dt>ETag</dt>
+          <dd>{{ company.etag || 'Not available' }}</dd>
+        </div>
+        @for (link of linkEntries(company); track link[0]) {
+          <div>
+            <dt>{{ formatLabel(link[0]) }}</dt>
+            <dd>{{ link[1] }}</dd>
+          </div>
+        }
+      </dl>
+    </details>
+  </article>
+}
