@@ -56,6 +56,7 @@ export interface CompaniesHouseCompanyProfile {
   type?: string;
   undeliverable_registered_office_address?: boolean;
   has_super_secure_pscs?: boolean;
+  version_count?: number;
 }
 
 // Search results need only a compact subset of the full profile. Mapping at the service boundary

@@ -34,6 +34,12 @@ summary:focus-visible {
   border-bottom: 1px solid var(--color-border);
 }
 
+.profile-actions {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+}
+
 .eyebrow {
   margin: 0 0 0.375rem;
   color: var(--color-action);
@@ -71,6 +77,11 @@ h1 {
   border-radius: 999px;
   font-size: 0.8125rem;
   font-weight: 700;
+}
+
+.history-toggle {
+  color: var(--color-action);
+  background: var(--color-surface);
 }
 
 .status--active {
@@ -267,6 +278,11 @@ button {
 @media (max-width: 42rem) {
   .profile-header {
     flex-direction: column;
+  }
+
+  .profile-actions {
+    width: 100%;
+    align-items: flex-start;
   }
 
   .details-grid,

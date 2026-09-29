@@ -25,3 +25,14 @@ export interface CompanySearchPage {
   page: number;
   pageSize: number;
 }
+
+export interface CompanyHistoryEntry {
+  versionNumber: number;
+  recordedAt: string;
+  companyNumber: string;
+  companyName: string;
+  companyStatus?: string;
+  incorporationDate?: string;
+  address?: string;
+  externalRegistrationNumber?: string;
+}
