@@ -182,6 +182,56 @@ public sealed class CompanyDatabaseServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetSearchLogsAsync_ReturnsNewestPageWithoutRawApiResponse()
+    {
+        await _databaseService.SaveSearchLogAsync(
+            "first search",
+            200,
+            4,
+            "{\"large\":\"response\"}",
+            Array.Empty<CompanyDbRecord>());
+        var newestId = await _databaseService.SaveSearchLogAsync(
+            "latest search",
+            502,
+            0,
+            "upstream failure",
+            Array.Empty<CompanyDbRecord>());
+
+        var result = await _databaseService.GetSearchLogsAsync(page: 1, pageSize: 1);
+
+        var log = Assert.Single(result.Items);
+        Assert.Equal(2, result.TotalResults);
+        Assert.Equal(1, result.Page);
+        Assert.Equal(1, result.PageSize);
+        Assert.Equal(newestId, log.SearchLogId);
+        Assert.Equal("latest search", log.UserInput);
+        Assert.Null(log.CompanyName);
+        Assert.Equal(0, log.ResultCount);
+        Assert.Equal(502, log.HttpStatus);
+        Assert.Equal(TimeSpan.Zero, log.SearchedAt.Offset);
+    }
+
+    [Fact]
+    public async Task GetSearchLogsAsync_FiltersByLinkedCompanyAndReturnsSingleCompanyName()
+    {
+        var company = new CompanyDbRecord
+        {
+            CompanyNumber = "00002065",
+            CompanyName = "LLOYDS BANK PLC",
+            CompanyStatus = "active"
+        };
+        await _databaseService.SaveSearchLogAsync("00002065", 200, 1, null, [company]);
+        await _databaseService.SaveSearchLogAsync("unrelated", 200, 0, null, []);
+
+        var result = await _databaseService.GetSearchLogsAsync(1, 20, "lloyds");
+
+        var log = Assert.Single(result.Items);
+        Assert.Equal(1, result.TotalResults);
+        Assert.Equal("lloyds", result.Query);
+        Assert.Equal("LLOYDS BANK PLC", log.CompanyName);
+    }
+
+    [Fact]
     public async Task SaveSearchLogAsync_Upsert_PreservesExistingExternalRegistrationNumberWhenNull()
     {
         // 1. Insert initial company with ExternalRegistrationNumber

@@ -1,6 +1,7 @@
 using System.Net;
 using Api.Database;
 using Api.Exceptions;
+using Api.Models;
 using Api.Services;
 using Microsoft.Extensions.Configuration;
 
@@ -178,6 +179,13 @@ public sealed class CompaniesHouseSearchServiceTests
     {
         public List<SavedLogEntry> SavedLogs { get; } = new();
         public List<SavedProfileEntry> SavedProfiles { get; } = new();
+
+        public Task<SearchLogPage> GetSearchLogsAsync(
+            int page,
+            int pageSize,
+            string? query = null,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new SearchLogPage([], 0, page, pageSize, query));
 
         public Task<long> SaveSearchLogAsync(
             string userInput,

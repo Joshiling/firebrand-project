@@ -1,4 +1,4 @@
-<nav class="pagination" aria-label="Search result pages">
+<nav class="pagination" [attr.aria-label]="label()">
   <button
     type="button"
     (click)="goTo(currentPage() - 1)"

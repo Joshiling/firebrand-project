@@ -30,6 +30,7 @@ describe('App', () => {
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('.brand')?.textContent).toContain('CompanyLens');
+    expect(compiled.querySelector('nav')?.textContent).toContain('Activity log');
     expect(compiled.querySelector('h1')?.textContent).toContain('Find a UK company');
     expect(compiled.querySelector('.environment')?.textContent).toContain('Live API');
   });

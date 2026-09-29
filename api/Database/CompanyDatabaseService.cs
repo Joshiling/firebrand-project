@@ -1,3 +1,5 @@
+using System.Globalization;
+using Api.Models;
 using Microsoft.Data.Sqlite;
 using System.Security.Cryptography;
 using System.Text;
@@ -12,6 +14,102 @@ public sealed class CompanyDatabaseService(
     private string? _resolvedConnectionString;
 
     private const string VersionHistoryMigration = "company-version-history-v1";
+
+    public async Task<SearchLogPage> GetSearchLogsAsync(
+        int page,
+        int pageSize,
+        string? query = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(page, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(pageSize, 1);
+
+        await using var connection = new SqliteConnection(GetResolvedConnectionString());
+        await connection.OpenAsync(cancellationToken);
+        await EnsureSchemaAsync(connection, cancellationToken);
+
+        var normalizedQuery = string.IsNullOrWhiteSpace(query) ? null : query.Trim();
+        var queryPattern = normalizedQuery is null ? null : $"%{EscapeLikePattern(normalizedQuery)}%";
+
+        await using var countCommand = connection.CreateCommand();
+        countCommand.CommandText = """
+            SELECT COUNT(*)
+            FROM search_logs AS log
+            WHERE @Query IS NULL
+                OR log.UserInput LIKE @Query ESCAPE '\'
+                OR EXISTS (
+                    SELECT 1
+                    FROM search_log_companies AS link
+                    INNER JOIN Companies AS company ON company.CompanyNumber = link.CompanyNumber
+                    WHERE link.SearchLogId = log.SearchLogId
+                        AND (
+                            company.CompanyName LIKE @Query ESCAPE '\'
+                            OR company.CompanyNumber LIKE @Query ESCAPE '\'
+                        )
+                );
+            """;
+        countCommand.Parameters.AddWithValue("@Query", (object?)queryPattern ?? DBNull.Value);
+        var totalResults = Convert.ToInt32(await countCommand.ExecuteScalarAsync(cancellationToken));
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT
+                log.SearchLogId,
+                log.UserInput,
+                (
+                    SELECT CASE WHEN COUNT(*) = 1 THEN MAX(company.CompanyName) END
+                    FROM search_log_companies AS link
+                    INNER JOIN Companies AS company ON company.CompanyNumber = link.CompanyNumber
+                    WHERE link.SearchLogId = log.SearchLogId
+                ) AS CompanyName,
+                log.SearchedAt,
+                log.ResultCount,
+                log.HttpStatus
+            FROM search_logs AS log
+            WHERE @Query IS NULL
+                OR log.UserInput LIKE @Query ESCAPE '\'
+                OR EXISTS (
+                    SELECT 1
+                    FROM search_log_companies AS link
+                    INNER JOIN Companies AS company ON company.CompanyNumber = link.CompanyNumber
+                    WHERE link.SearchLogId = log.SearchLogId
+                        AND (
+                            company.CompanyName LIKE @Query ESCAPE '\'
+                            OR company.CompanyNumber LIKE @Query ESCAPE '\'
+                        )
+                )
+            ORDER BY datetime(log.SearchedAt) DESC, log.SearchLogId DESC
+            LIMIT @PageSize OFFSET @Offset;
+            """;
+        command.Parameters.AddWithValue("@Query", (object?)queryPattern ?? DBNull.Value);
+        command.Parameters.AddWithValue("@PageSize", pageSize);
+        command.Parameters.AddWithValue("@Offset", (page - 1) * pageSize);
+
+        var items = new List<SearchLogEntry>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var searchedAt = DateTimeOffset.Parse(
+                reader.GetString(3),
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+
+            items.Add(new SearchLogEntry(
+                reader.GetInt64(0),
+                reader.GetString(1),
+                reader.IsDBNull(2) ? null : reader.GetString(2),
+                searchedAt,
+                reader.IsDBNull(4) ? 0 : reader.GetInt32(4),
+                reader.IsDBNull(5) ? 0 : reader.GetInt32(5)));
+        }
+
+        return new SearchLogPage(items, totalResults, page, pageSize, normalizedQuery);
+    }
+
+    private static string EscapeLikePattern(string value) =>
+        value.Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("%", "\\%", StringComparison.Ordinal)
+            .Replace("_", "\\_", StringComparison.Ordinal);
 
     public async Task<long> SaveSearchLogAsync(
         string userInput,
