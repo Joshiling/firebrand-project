@@ -72,6 +72,25 @@ describe('CompanyDetails', () => {
     expect(element.textContent).toContain('No previous company names are available.');
   });
 
+  it('describes missing previous-name dates naturally', async () => {
+    service.profile = {
+      company_name: 'DELOITTE LIMITED',
+      company_number: '04334460',
+      previous_company_names: [
+        { name: 'NO DATES LIMITED' },
+        { name: 'START DATE LIMITED', effective_from: '1970-01-01' },
+        { name: 'END DATE LIMITED', ceased_on: '1975-12-31' },
+      ],
+    };
+
+    const element = await navigate('/companies/04334460');
+
+    expect(element.textContent).toContain('Dates not available');
+    expect(element.textContent).toContain('From 1 Jan 1970');
+    expect(element.textContent).toContain('Until 31 Dec 1975');
+    expect(element.textContent).not.toContain('Not available to Not available');
+  });
+
   it('shows a not-found state for an unknown registration number', async () => {
     service.profile = null;
 

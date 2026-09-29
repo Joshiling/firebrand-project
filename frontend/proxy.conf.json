@@ -1,0 +1,12 @@
+{
+  "/name": {
+    "target": "https://localhost:7097",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/registry_id": {
+    "target": "https://localhost:7097",
+    "secure": false,
+    "changeOrigin": true
+  }
+}

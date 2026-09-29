@@ -72,7 +72,7 @@ Return `200 OK` with a JSON list of matching `Company` results using the same it
 ]
 ```
 
-Return `200 OK` with `[]` when no companies match. The current Angular MVP will paginate this returned list locally at 10 results per page.
+Return `200 OK` with `[]` when no companies match. The backend requests the first 100 Companies House matches to stay within the upstream search window. The Angular MVP paginates that bounded list locally at 10 results per page.
 
 ## Company details
 
@@ -82,7 +82,7 @@ Return `200 OK` with `[]` when no companies match. The current Angular MVP will 
 GET /registry_id/00002065
 ```
 
-This route retrieves the full profile displayed by the CompanyLens details page after a user selects a search result. The Angular MVP currently exercises this flow through `MockCompanySearchService`; the future HTTP implementation will call this endpoint. The path value remains a string.
+This route retrieves the full profile displayed by the CompanyLens details page after a user selects a search result. Angular calls it through `HttpCompanySearchService` and the development proxy. The path value remains a string.
 
 ### Successful response
 
@@ -102,7 +102,7 @@ Return `200 OK` with one full company profile. The supplied Lloyds response is t
 }
 ```
 
-Additional Companies House profile fields can pass through unchanged. The details page handles accounts, confirmation statements, company flags, previous names, SIC codes, registered address, links, and missing optional fields. Return `404 Not Found` if the company does not exist.
+The backend maps accounts, confirmation statements, company flags, previous names, SIC codes, registered address, links, and other profile metadata. Missing optional Companies House fields remain nullable so the details page can show an explicit fallback. Return `404 Not Found` if the company does not exist.
 
 ## Error responses
 
@@ -129,5 +129,5 @@ Errors should return JSON without exposing API keys, upstream authorization head
 - Keep the Companies House API key in backend configuration or user secrets.
 - Never send the API key to Angular or commit it to Git.
 - Set a sensible outbound timeout and pass cancellation tokens through the C# request.
-- Allow the Angular development origin, normally `http://localhost:4200`, through development CORS configuration, or agree an Angular development proxy.
-- Confirm the backend base URL and final `Company` JSON field names before replacing `MockCompanySearchService` with `HttpClient`.
+- Angular uses `frontend/proxy.conf.json` during local development to forward company routes to the backend without exposing credentials or requiring browser CORS access.
+- Keep backend response field names synchronized with the TypeScript contract in `HttpCompanySearchService`.

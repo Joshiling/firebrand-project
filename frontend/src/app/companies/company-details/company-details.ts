@@ -115,7 +115,9 @@ export class CompanyDetails {
       address?.address_line_1,
       address?.address_line_2,
       address?.locality,
+      address?.region,
       address?.postal_code,
+      address?.country,
     ].filter(Boolean);
 
     return parts.length ? parts.join(', ') : 'Not available';
@@ -139,6 +141,22 @@ export class CompanyDetails {
       year: 'numeric',
       timeZone: 'UTC',
     }).format(date);
+  }
+
+  protected formatDateRange(effectiveFrom?: string, ceasedOn?: string): string {
+    if (effectiveFrom && ceasedOn) {
+      return `${this.formatDate(effectiveFrom)} to ${this.formatDate(ceasedOn)}`;
+    }
+
+    if (effectiveFrom) {
+      return `From ${this.formatDate(effectiveFrom)}`;
+    }
+
+    if (ceasedOn) {
+      return `Until ${this.formatDate(ceasedOn)}`;
+    }
+
+    return 'Dates not available';
   }
 
   protected formatLabel(value?: string): string {
