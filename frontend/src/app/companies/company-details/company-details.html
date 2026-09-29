@@ -222,10 +222,9 @@
             ) {
               <li>
                 <strong>{{ previousName.name }}</strong>
-                <span
-                  >{{ formatDate(previousName.effective_from) }} to
-                  {{ formatDate(previousName.ceased_on) }}</span
-                >
+                <span>{{
+                  formatDateRange(previousName.effective_from, previousName.ceased_on)
+                }}</span>
               </li>
             }
           </ol>

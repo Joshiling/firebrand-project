@@ -39,15 +39,17 @@ export interface CompaniesHouseCompanyProfile {
   last_full_members_list_date?: string;
   links?: Record<string, string>;
   previous_company_names?: readonly {
-    ceased_on: string;
-    effective_from: string;
+    ceased_on?: string;
+    effective_from?: string;
     name: string;
   }[];
   registered_office_address?: {
     address_line_1?: string;
     address_line_2?: string;
+    country?: string;
     locality?: string;
     postal_code?: string;
+    region?: string;
   };
   registered_office_is_in_dispute?: boolean;
   sic_codes?: readonly string[];

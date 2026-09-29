@@ -22,7 +22,7 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('renders the CompanyLens heading and mock-data label', async () => {
+  it('renders the CompanyLens heading and live API label', async () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     await TestBed.inject(Router).navigateByUrl('/');
@@ -31,6 +31,6 @@ describe('App', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('.brand')?.textContent).toContain('CompanyLens');
     expect(compiled.querySelector('h1')?.textContent).toContain('Find a UK company');
-    expect(compiled.querySelector('.environment')?.textContent).toContain('Sample data');
+    expect(compiled.querySelector('.environment')?.textContent).toContain('Live API');
   });
 });

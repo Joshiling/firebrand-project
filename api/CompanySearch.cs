@@ -6,4 +6,8 @@ public sealed record CompanySearch
     public required string RegistryId { get; init; }
 
     public string? Address { get; init; }
+
+    public string? CompanyStatus { get; init; }
+
+    public string? CompanyType { get; init; }
 }
