@@ -1,4 +1,7 @@
 /// <summary>Represents a company shown in search results.</summary>
+
+namespace Api.Models;
+
 public sealed record CompanySearch
 {
     public required string Name { get; init; }

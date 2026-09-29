@@ -1,3 +1,6 @@
+using Api.Endpoints;
+using Api.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -6,7 +9,10 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient("CompaniesHouse", client =>
 {
-    client.BaseAddress = new Uri("https://api.company-information.service.gov.uk/");
+    var baseUrl = builder.Configuration["CompaniesHouse:BaseUrl"]
+        ?? throw new InvalidOperationException("CompaniesHouse:BaseUrl is not configured.");
+
+    client.BaseAddress = new Uri(baseUrl);
 });
 builder.Services.AddSingleton<ICompanySearchService, CompaniesHouseSearchService>();
 

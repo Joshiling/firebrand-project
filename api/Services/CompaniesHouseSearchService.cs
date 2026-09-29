@@ -4,6 +4,10 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using Api.DTOs.CompaniesHouse;
+using Api.Exceptions;
+using Api.Models;
+
+namespace Api.Services;
 
 public sealed class CompaniesHouseSearchService(
     IHttpClientFactory httpClientFactory,
