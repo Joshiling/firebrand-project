@@ -111,3 +111,17 @@ curl.exe -u "${apikey}:" https://api.company-information.service.gov.uk/search/c
 ```
 ### Database
 ![DB UML Diagram](DB_UML_Diagram.png)  
+
+## Setting Up Your Companies House API Key
+
+This project uses .NET User Secrets to store API keys securely. API keys are **not stored in the repository** and should never be committed to Git.
+
+### 1. Get a Companies House API Key
+Create an API key from the Companies House Developer Hub.
+
+### 2. Add Your Key to User Secrets
+From the project directory containing the `.csproj` file, run:
+
+```shell
+dotnet user-secrets set "CompaniesHouse:ApiKey" "YOUR_API_KEY_HERE"
+```
