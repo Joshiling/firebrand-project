@@ -4,7 +4,19 @@
 
 
 
-![DB UML Diagram](DB_UML_Diagram.png)   
+![DB UML Diagram](images\DB_UML_Diagram.png)   
+
+## DB Writing Process
+
+
+1. Goes through the endpoints
+2. uses our search service
+3. Data comes in from the API
+4. Goes back to the service backend then writes to the DB into the tables.
+
+![DB_Writing_Process](images\DB_Writing_Process.png)
+
+
 
 **Companies**
    CompanyNumber (primary key) <--

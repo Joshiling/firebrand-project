@@ -11,6 +11,8 @@ public sealed record Company
 
     public required string RegistryId { get; init; }
 
+    public string CompanyNumber => RegistryId;
+
     public string? Address { get; init; }
 
     public string? CompanyStatus { get; init; }

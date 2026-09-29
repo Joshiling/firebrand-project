@@ -1,3 +1,5 @@
+using Api.Database;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -8,6 +10,7 @@ builder.Services.AddHttpClient("CompaniesHouse", client =>
 {
     client.BaseAddress = new Uri("https://api.company-information.service.gov.uk/");
 });
+builder.Services.AddSingleton<ICompanyDatabaseService, CompanyDatabaseService>();
 builder.Services.AddSingleton<ICompanySearchService, CompaniesHouseSearchService>();
 
 var app = builder.Build();
