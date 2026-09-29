@@ -19,7 +19,7 @@ public sealed class CompaniesHouseSearchService(
         CancellationToken cancellationToken)
     {
         var apiKey = GetApiKey();
-        var companies = new List<Company>();
+        var companies = new List<CompanySearch>();
         var seenRegistryIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var startIndex = 0;
         var totalResults = int.MaxValue;
@@ -47,29 +47,20 @@ public sealed class CompaniesHouseSearchService(
                     continue;
                 }
 
-                if (!_companies.TryGetValue(item.CompanyNumber, out var company))
+                if (string.IsNullOrWhiteSpace(item.Title))
                 {
-                    company = await GetCompanyProfileAsync(
-                        client,
-                        item.CompanyNumber,
-                        apiKey,
-                        item.Title,
-                        item.AddressSnippet,
-                        cancellationToken);
-
-                    if (company is null)
-                    {
-                        continue;
-                    }
+                    continue;
                 }
 
-                companies.Add(company);
+                var company = ToCompany(item);
+                _companies.TryAdd(company.RegistryId, company);
+                companies.Add(ToCompanySearch(company));
             }
 
             startIndex += items.Count;
         }
 
-        return companies.Select(ToCompanySearch).ToArray();
+        return companies;
     }
 
     public async Task<Company?> GetByRegistryIdAsync(
@@ -154,6 +145,7 @@ public sealed class CompaniesHouseSearchService(
             RegistryId = companyNumber,
             Address = FormatAddress(profile.RegisteredOfficeAddress) ?? fallbackAddress,
             CompanyStatus = profile.CompanyStatus,
+            CompanyType = profile.CompanyType,
             DateOfCreation = profile.DateOfCreation,
             RegisteredOfficeAddress = profile.RegisteredOfficeAddress
         };
@@ -236,6 +228,17 @@ public sealed class CompaniesHouseSearchService(
         var formatted = string.Join(", ", parts.Where(part => !string.IsNullOrWhiteSpace(part)));
         return string.IsNullOrWhiteSpace(formatted) ? null : formatted;
     }
+
+    private static Company ToCompany(CompanySearchItemDto item) => new()
+    {
+        Name = item.Title!,
+        RegistryId = item.CompanyNumber!,
+        Address = FormatAddress(item.Address) ?? item.AddressSnippet,
+        CompanyStatus = item.CompanyStatus,
+        CompanyType = item.CompanyType,
+        DateOfCreation = item.DateOfCreation,
+        RegisteredOfficeAddress = item.Address
+    };
 
     private static CompanySearch ToCompanySearch(Company company) => new()
     {

@@ -41,7 +41,7 @@ public static class CompanyEndpoints
         if (!IsValidRegistryId(registryId))
         {
             return TypedResults.BadRequest(CreateValidationProblem(
-                "The registry_id query parameter must contain only digits."));
+                "The registry_id query parameter must contain digits, optionally preceded by two letters."));
         }
 
         return await SearchAsync(registryId!, companySearchService, cancellationToken);
@@ -69,7 +69,7 @@ public static class CompanyEndpoints
         if (!IsValidRegistryId(id))
         {
             return TypedResults.BadRequest(CreateValidationProblem(
-                "The registry ID must contain only digits."));
+                "The registry ID must contain digits, optionally preceded by two letters."));
         }
 
         try
@@ -105,8 +105,22 @@ public static class CompanyEndpoints
             detail: exception.Message,
             statusCode: exception.StatusCode);
 
-    private static bool IsValidRegistryId(string? value) =>
-        !string.IsNullOrEmpty(value) && value.All(char.IsAsciiDigit);
+    private static bool IsValidRegistryId(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return false;
+        }
+
+        var digitStart = value.Length >= 2
+            && char.IsAsciiLetter(value[0])
+            && char.IsAsciiLetter(value[1])
+                ? 2
+                : 0;
+
+        return digitStart < value.Length
+            && value.AsSpan(digitStart).IndexOfAnyExceptInRange('0', '9') < 0;
+    }
 
     private static ProblemDetails CreateValidationProblem(string detail) => new()
     {

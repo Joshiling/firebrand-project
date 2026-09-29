@@ -21,4 +21,16 @@ public sealed class CompanySearchItemDto
 
     [JsonPropertyName("address_snippet")]
     public string? AddressSnippet { get; set; }
+
+    [JsonPropertyName("address")]
+    public RegisteredOfficeAddressDto? Address { get; set; }
+
+    [JsonPropertyName("company_status")]
+    public string? CompanyStatus { get; set; }
+
+    [JsonPropertyName("company_type")]
+    public string? CompanyType { get; set; }
+
+    [JsonPropertyName("date_of_creation")]
+    public DateOnly? DateOfCreation { get; set; }
 }

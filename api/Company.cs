@@ -11,6 +11,8 @@ public sealed record Company
 
     public string? CompanyStatus { get; init; }
 
+    public string? CompanyType { get; init; }
+
     public DateOnly? DateOfCreation { get; init; }
 
     public RegisteredOfficeAddressDto? RegisteredOfficeAddress { get; init; }
