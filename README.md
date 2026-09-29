@@ -1,27 +1,30 @@
 # firebrand-project
 
-## Companies House API
+## Setting Up Your Companies House API Key
 
-The API key is read only by the ASP.NET backend. Never place it in Angular source, proxy configuration, or committed settings.
+This project uses .NET User Secrets to store API keys securely. API keys are **not stored in the repository** and should never be committed to Git.
 
-To persist the key securely for local development, set it with .NET User Secrets:
+### 1. Get a Companies House API Key
+Create an API key from the Companies House Developer Hub.
 
-```powershell
-dotnet user-secrets --project api/api.csproj set "CompaniesHouse:ApiKey" "<your-api-key>"
+### 2. Add Your Key to User Secrets
+From the project directory containing the `.csproj` file, run:
+
+```shell
+dotnet user-secrets set "CompaniesHouse:ApiKey" "YOUR_API_KEY_HERE"
 ```
 
-Alternatively, set it for the current PowerShell session as shown below.
+## Run the backend
 
-### Run the backend
-
-Set the key in the same PowerShell terminal that will run the API:
+After saving the API key with User Secrets, run the backend from the repository root:
 
 ```powershell
-$env:CompaniesHouse__ApiKey = "<your-api-key>"
 dotnet run --project api/api.csproj --launch-profile https
 ```
 
 The backend starts at `https://localhost:7097` and exposes Swagger at `https://localhost:7097/swagger`.
+
+## API Calls
 
 #### Get company by ID through the backend
 
