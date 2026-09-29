@@ -16,10 +16,9 @@ dotnet user-secrets set "CompaniesHouse:ApiKey" "YOUR_API_KEY_HERE"
 
 ## Run the backend
 
-Set the key in the same PowerShell terminal that will run the API:
+After saving the API key with User Secrets, run the backend from the repository root:
 
 ```powershell
-$env:CompaniesHouse__ApiKey = "<your-api-key>"
 dotnet run --project api/api.csproj --launch-profile https
 ```
 
