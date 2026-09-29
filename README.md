@@ -1,5 +1,8 @@
 # firebrand-project
 
+### Database
+![DB UML Diagram](DB_UML_Diagram.png)  
+
 ## Companies House API
 
 #### Set API key env variable in your terminal:
