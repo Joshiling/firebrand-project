@@ -1,4 +1,5 @@
 using System.Globalization;
+using Api.Models;
 using Microsoft.Data.Sqlite;
 
 namespace Api.Database;

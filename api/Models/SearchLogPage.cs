@@ -1,4 +1,4 @@
-namespace Api.Database;
+namespace Api.Models;
 
 /// <summary>Represents one recorded company search.</summary>
 public sealed record SearchLogEntry(

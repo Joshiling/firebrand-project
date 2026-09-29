@@ -1,3 +1,5 @@
+using Api.Models;
+
 namespace Api.Database;
 
 public interface ICompanyDatabaseService
