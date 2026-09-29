@@ -4,8 +4,11 @@
 
 
 
-![DB UML Diagram](DB_UML_Diagram.png)   
+![DB UML Diagram](images\DB_UML_Diagram.png)   
 
+## DB Writing Process
+
+![DB_Writing_Process](images\DB_Writing_Process.png)   
 **Companies**
    CompanyNumber (primary key) <--
 **search_log_companies**
