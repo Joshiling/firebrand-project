@@ -3,6 +3,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.WebUtilities;
 using Api.Database;
 using Api.DTOs.CompaniesHouse;
 
@@ -17,8 +19,26 @@ public sealed class CompaniesHouseSearchService(
 
     private readonly ConcurrentDictionary<string, Company> _companies = new(StringComparer.OrdinalIgnoreCase);
 
-    public async Task<IReadOnlyList<CompanySearch>> SearchAsync(
+    public Task<IReadOnlyList<CompanySearch>> SearchAsync(
         string searchTerm,
+        CancellationToken cancellationToken) => SearchByNameAsync(searchTerm, null, cancellationToken);
+
+    public Task<IReadOnlyList<CompanySearch>> SearchByNameAsync(
+        string searchTerm,
+        CompanySearchFilters? filters,
+        CancellationToken cancellationToken) =>
+        SearchAsyncCore(searchTerm, filters, useAdvancedSearch: filters?.HasFilters == true, cancellationToken);
+
+    public Task<IReadOnlyList<CompanySearch>> SearchByRegistryIdAsync(
+        string registryId,
+        CompanySearchFilters? filters,
+        CancellationToken cancellationToken) =>
+        SearchAsyncCore(registryId, filters, useAdvancedSearch: false, cancellationToken);
+
+    private async Task<IReadOnlyList<CompanySearch>> SearchAsyncCore(
+        string searchTerm,
+        CompanySearchFilters? filters,
+        bool useAdvancedSearch,
         CancellationToken cancellationToken)
     {
         var apiKey = GetApiKey();
@@ -26,11 +46,29 @@ public sealed class CompaniesHouseSearchService(
         var dbRecords = new List<CompanyDbRecord>();
         var seenRegistryIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var client = httpClientFactory.CreateClient(HttpClientName);
-        var path = $"search/companies?q={Uri.EscapeDataString(searchTerm)}&items_per_page={ItemsPerPage}&start_index=0";
+        var path = useAdvancedSearch
+            ? BuildAdvancedSearchPath(searchTerm, filters!)
+            : $"search/companies?q={Uri.EscapeDataString(searchTerm)}&items_per_page={ItemsPerPage}&start_index=0";
 
         try
         {
-            var (page, rawJson) = await GetJsonWithRawAsync<CompanySearchResponseDto>(client, path, apiKey, cancellationToken);
+            CompanySearchResponseDto page;
+            string rawJson;
+            if (useAdvancedSearch)
+            {
+                var (advancedPage, responseJson) = await GetJsonWithRawAsync<AdvancedCompanySearchResponseDto>(
+                    client,
+                    path,
+                    apiKey,
+                    cancellationToken,
+                    () => new AdvancedCompanySearchResponseDto());
+                page = ToCompanySearchResponse(advancedPage);
+                rawJson = responseJson;
+            }
+            else
+            {
+                (page, rawJson) = await GetJsonWithRawAsync<CompanySearchResponseDto>(client, path, apiKey, cancellationToken);
+            }
 
             // Companies House limits how far callers can page into broad searches. Returning the first
             // 100 matches keeps this MVP responsive and avoids a 416 response for names such as Lloyds.
@@ -45,6 +83,11 @@ public sealed class CompaniesHouseSearchService(
                 }
 
                 if (string.IsNullOrWhiteSpace(item.Title))
+                {
+                    continue;
+                }
+
+                if (!MatchesFilters(item, filters))
                 {
                     continue;
                 }
@@ -65,9 +108,11 @@ public sealed class CompaniesHouseSearchService(
             }
 
             await databaseService.SaveSearchLogAsync(
-                searchTerm,
+                FormatSearchLogInput(searchTerm, filters),
                 StatusCodes.Status200OK,
-                page.TotalResults ?? companies.Count,
+                filters?.HasFilters == true && !useAdvancedSearch
+                    ? companies.Count
+                    : page.TotalResults ?? companies.Count,
                 rawJson,
                 dbRecords,
                 cancellationToken);
@@ -77,7 +122,7 @@ public sealed class CompaniesHouseSearchService(
         catch (CompaniesHouseApiException exception)
         {
             await databaseService.SaveSearchLogAsync(
-                searchTerm,
+                FormatSearchLogInput(searchTerm, filters),
                 exception.StatusCode,
                 0,
                 exception.Message,
@@ -226,9 +271,15 @@ public sealed class CompaniesHouseSearchService(
         HttpClient client,
         string path,
         string apiKey,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<T>? notFoundFactory = null)
     {
         using var response = await SendAsync(client, path, apiKey, cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.NotFound && notFoundFactory is not null)
+        {
+            return (notFoundFactory(), string.Empty);
+        }
 
         if (!response.IsSuccessStatusCode)
         {
@@ -241,6 +292,92 @@ public sealed class CompaniesHouseSearchService(
         return (result ?? throw new CompaniesHouseApiException(
             "Companies House returned an empty search response.",
             StatusCodes.Status502BadGateway), rawJson);
+    }
+
+    private static string BuildAdvancedSearchPath(string searchTerm, CompanySearchFilters filters)
+    {
+        var query = new List<KeyValuePair<string, string?>>
+        {
+            new("company_name_includes", searchTerm),
+            new("size", ItemsPerPage.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            new("start_index", "0")
+        };
+
+        foreach (var status in filters.CompanyStatuses)
+        {
+            query.Add(new KeyValuePair<string, string?>("company_status", status));
+        }
+
+        foreach (var type in filters.CompanyTypes)
+        {
+            query.Add(new KeyValuePair<string, string?>("company_type", type));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filters.Location))
+        {
+            query.Add(new KeyValuePair<string, string?>("location", filters.Location));
+        }
+
+        return QueryHelpers.AddQueryString("advanced-search/companies", query);
+    }
+
+    private static CompanySearchResponseDto ToCompanySearchResponse(AdvancedCompanySearchResponseDto response) => new()
+    {
+        TotalResults = response.TotalResults,
+        Items = response.Items?.Select(item => new CompanySearchItemDto
+        {
+            Title = item.CompanyName,
+            CompanyNumber = item.CompanyNumber,
+            CompanyStatus = item.CompanyStatus,
+            CompanyType = item.CompanyType,
+            DateOfCreation = item.DateOfCreation,
+            Address = item.RegisteredOfficeAddress ?? item.Address,
+            AddressSnippet = item.AddressSnippet
+        }).ToList()
+    };
+
+    private static bool MatchesFilters(CompanySearchItemDto item, CompanySearchFilters? filters)
+    {
+        if (filters is null || !filters.HasFilters)
+        {
+            return true;
+        }
+
+        var matchesStatus = filters.CompanyStatuses.Count == 0
+            || filters.CompanyStatuses.Contains(item.CompanyStatus ?? string.Empty, StringComparer.OrdinalIgnoreCase);
+        var matchesType = filters.CompanyTypes.Count == 0
+            || filters.CompanyTypes.Contains(item.CompanyType ?? string.Empty, StringComparer.OrdinalIgnoreCase);
+        var address = FormatAddress(item.Address) ?? item.AddressSnippet;
+        var matchesLocation = string.IsNullOrWhiteSpace(filters.Location)
+            || (address?.Contains(filters.Location, StringComparison.OrdinalIgnoreCase) ?? false);
+
+        return matchesStatus && matchesType && matchesLocation;
+    }
+
+    private static string FormatSearchLogInput(string searchTerm, CompanySearchFilters? filters)
+    {
+        if (filters is null || !filters.HasFilters)
+        {
+            return searchTerm;
+        }
+
+        var filterParts = new List<string>();
+        if (filters.CompanyStatuses.Count > 0)
+        {
+            filterParts.Add($"company_status={string.Join(',', filters.CompanyStatuses)}");
+        }
+
+        if (filters.CompanyTypes.Count > 0)
+        {
+            filterParts.Add($"company_type={string.Join(',', filters.CompanyTypes)}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(filters.Location))
+        {
+            filterParts.Add($"location={filters.Location}");
+        }
+
+        return $"{searchTerm} [{string.Join("; ", filterParts)}]";
     }
 
     private static async Task<HttpResponseMessage> SendAsync(
@@ -267,9 +404,12 @@ public sealed class CompaniesHouseSearchService(
 
     private static CompaniesHouseApiException CreateApiException(HttpStatusCode statusCode)
     {
-        var responseStatus = statusCode == HttpStatusCode.TooManyRequests
-            ? StatusCodes.Status503ServiceUnavailable
-            : StatusCodes.Status502BadGateway;
+        var responseStatus = statusCode switch
+        {
+            HttpStatusCode.BadRequest => StatusCodes.Status400BadRequest,
+            HttpStatusCode.TooManyRequests => StatusCodes.Status503ServiceUnavailable,
+            _ => StatusCodes.Status502BadGateway
+        };
 
         return new CompaniesHouseApiException(
             $"Companies House returned HTTP {(int)statusCode}.",
