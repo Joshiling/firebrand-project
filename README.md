@@ -2,16 +2,31 @@
 
 ## Companies House API
 
-#### Set API key env variable in your terminal:
+The API key is read only by the ASP.NET backend. Never place it in Angular source, proxy configuration, or committed settings.
 
-```shell
-$apiKey = "abc"
+To persist the key securely for local development, set it with .NET User Secrets:
+
+```powershell
+dotnet user-secrets --project api/api.csproj set "CompaniesHouse:ApiKey" "<your-api-key>"
 ```
 
-#### Get company by ID:
+Alternatively, set it for the current PowerShell session as shown below.
 
-```shell
-curl.exe -u "${apikey}:" https://api.company-information.service.gov.uk/company/00002065
+### Run the backend
+
+Set the key in the same PowerShell terminal that will run the API:
+
+```powershell
+$env:CompaniesHouse__ApiKey = "<your-api-key>"
+dotnet run --project api/api.csproj --launch-profile https
+```
+
+The backend starts at `https://localhost:7097` and exposes Swagger at `https://localhost:7097/swagger`.
+
+#### Get company by ID through the backend
+
+```powershell
+curl.exe -k https://localhost:7097/registry_id/00002065
 ```
 
 #### Example Data:
@@ -104,10 +119,78 @@ curl.exe -u "${apikey}:" https://api.company-information.service.gov.uk/company/
 }
 ```
 
-#### Search:
+#### Search through the backend
 
-```shell
-curl.exe -u "${apikey}:" https://api.company-information.service.gov.uk/search/companies?q=tesco
+```powershell
+curl.exe -k "https://localhost:7097/name?name=tesco"
 ```
-### Database
-![DB UML Diagram](DB_UML_Diagram.png)  
+
+This repository contains the database, backend, and CompanyLens Angular frontend for the client onboarding project.
+
+## Database
+
+See the [database guide](DB_Guide.md) for setup and usage details.
+
+![Database UML diagram](DB_UML_Diagram.png)
+
+## Frontend: CompanyLens
+
+CompanyLens is the Angular company search and verification frontend for client onboarding. It calls the local ASP.NET backend, which keeps Companies House credentials out of the browser.
+
+## Current scope
+
+- Search by partial company name or exact registration number
+- Display company name, registration number, status, type, and registered address
+- Open a separate full-profile page for each company
+- Preserve the submitted query and page when navigating between results and details
+- Paginate matching results at 10 companies per page
+- Handle empty input, no results, loading, and service errors
+- Support keyboard navigation and responsive screen sizes
+
+Authentication, saved companies, onboarding forms, and verification decisions are outside this frontend MVP.
+
+## Run the frontend locally
+
+The current project was generated with Angular 22.2 and npm 11.19.
+
+```powershell
+Set-Location frontend
+npm install
+npm start
+```
+
+Start the backend first, then open the URL printed by Angular, normally `http://localhost:4200`. Angular proxies company requests to `https://localhost:7097`, so the browser never receives the API key.
+
+## Verify the frontend
+
+```powershell
+Set-Location frontend
+npm test -- --watch=false
+npm run build
+```
+
+## Backend connection
+
+`HttpCompanySearchService` selects `/registry_id` or `/name`, maps the backend DTOs into frontend display models, and calls `/registry_id/{id}` for details. `MockCompanySearchService` remains available for isolated component tests and local fixtures.
+
+Queries matching eight digits or two letters followed by six digits are treated as registration numbers. Other input is treated as a company name. Company numbers must remain strings because values can have leading zeros (`00002065`) or letter prefixes (`SC123456`).
+
+Displayed live records come from Companies House through the backend. The details endpoint maps accounts, confirmation statements, flags, previous names, SIC codes, links, and registered-office data. Fields omitted by Companies House for a particular company are shown as unavailable.
+
+## Backend handoff
+
+The confirmed request, response, validation, error, CORS, and API-key requirements are documented in [Backend API Contract](docs/backend-api-contract.md).
+
+```http
+GET /registry_id?registry_id=00002065
+GET /name?name=Lloyds
+GET /registry_id/00002065
+```
+
+The first two routes return lists of `Company` results. The third route returns the profile used by the company-details page. Angular calls these relative paths through its development proxy.
+
+The tested query classifier handles eight digits or two letters followed by six digits as registration numbers. The backend returns the first 100 Companies House matches, and the frontend paginates that bounded list locally. This avoids Companies House result-window errors for broad names. Components remain isolated from endpoint selection through `CompanySearchService`.
+
+## Git workflow
+
+Feature work is developed on dedicated branches and reviewed through pull requests into `main`; it is not pushed directly to `main`.

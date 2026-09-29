@@ -24,65 +24,51 @@ public sealed class CompaniesHouseSearchService(
         var apiKey = GetApiKey();
         var companies = new List<CompanySearch>();
         var dbRecords = new List<CompanyDbRecord>();
-        var seenCompanyNumbers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var startIndex = 0;
-        var totalResults = int.MaxValue;
+        var seenRegistryIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var client = httpClientFactory.CreateClient(HttpClientName);
-        string? firstPageRawJson = null;
+        var path = $"search/companies?q={Uri.EscapeDataString(searchTerm)}&items_per_page={ItemsPerPage}&start_index=0";
 
         try
         {
-            while (startIndex < totalResults)
+            var (page, rawJson) = await GetJsonWithRawAsync<CompanySearchResponseDto>(client, path, apiKey, cancellationToken);
+
+            // Companies House limits how far callers can page into broad searches. Returning the first
+            // 100 matches keeps this MVP responsive and avoids a 416 response for names such as Lloyds.
+            foreach (var item in page.Items ?? [])
             {
-                var path = $"search/companies?q={Uri.EscapeDataString(searchTerm)}&items_per_page={ItemsPerPage}&start_index={startIndex}";
-                var (page, rawJson) = await GetJsonWithRawAsync<CompanySearchResponseDto>(client, path, apiKey, cancellationToken);
-                firstPageRawJson ??= rawJson;
-                var items = page.Items ?? [];
-                totalResults = page.TotalResults ?? items.Count;
+                cancellationToken.ThrowIfCancellationRequested();
 
-                if (items.Count == 0)
+                if (string.IsNullOrWhiteSpace(item.CompanyNumber)
+                    || !seenRegistryIds.Add(item.CompanyNumber))
                 {
-                    break;
+                    continue;
                 }
 
-                foreach (var item in items)
+                if (string.IsNullOrWhiteSpace(item.Title))
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    if (string.IsNullOrWhiteSpace(item.CompanyNumber)
-                        || !seenCompanyNumbers.Add(item.CompanyNumber))
-                    {
-                        continue;
-                    }
-
-                    if (string.IsNullOrWhiteSpace(item.Title))
-                    {
-                        continue;
-                    }
-
-                    var company = ToCompany(item);
-                    _companies.TryAdd(company.RegistryId, company);
-                    companies.Add(ToCompanySearch(company));
-
-                    dbRecords.Add(new CompanyDbRecord
-                    {
-                        CompanyNumber = item.CompanyNumber,
-                        CompanyName = item.Title,
-                        CompanyStatus = item.CompanyStatus,
-                        IncorporationDate = item.DateOfCreation?.ToString("yyyy-MM-dd"),
-                        Address = FormatAddress(item.Address) ?? item.AddressSnippet,
-                        ExternalRegistrationNumber = item.ExternalRegistrationNumber
-                    });
+                    continue;
                 }
 
-                startIndex += items.Count;
+                var company = ToCompany(item);
+                _companies.TryAdd(company.RegistryId, company);
+                companies.Add(ToCompanySearch(company));
+
+                dbRecords.Add(new CompanyDbRecord
+                {
+                    CompanyNumber = item.CompanyNumber,
+                    CompanyName = item.Title,
+                    CompanyStatus = item.CompanyStatus,
+                    IncorporationDate = item.DateOfCreation?.ToString("yyyy-MM-dd"),
+                    Address = FormatAddress(item.Address) ?? item.AddressSnippet,
+                    ExternalRegistrationNumber = item.ExternalRegistrationNumber
+                });
             }
 
             await databaseService.SaveSearchLogAsync(
                 searchTerm,
                 StatusCodes.Status200OK,
-                totalResults == int.MaxValue ? companies.Count : totalResults,
-                firstPageRawJson,
+                page.TotalResults ?? companies.Count,
+                rawJson,
                 dbRecords,
                 cancellationToken);
 
@@ -190,13 +176,27 @@ public sealed class CompaniesHouseSearchService(
 
         var company = new Company
         {
+            Accounts = profile.Accounts,
+            CanFile = profile.CanFile,
             Name = companyName,
             RegistryId = companyNumber,
             Address = FormatAddress(profile.RegisteredOfficeAddress) ?? fallbackAddress,
             CompanyStatus = profile.CompanyStatus,
             CompanyType = profile.CompanyType,
+            ConfirmationStatement = profile.ConfirmationStatement,
             DateOfCreation = profile.DateOfCreation,
-            RegisteredOfficeAddress = profile.RegisteredOfficeAddress
+            Etag = profile.Etag,
+            HasCharges = profile.HasCharges,
+            HasInsolvencyHistory = profile.HasInsolvencyHistory,
+            HasSuperSecurePscs = profile.HasSuperSecurePscs,
+            Jurisdiction = profile.Jurisdiction,
+            LastFullMembersListDate = profile.LastFullMembersListDate,
+            Links = profile.Links,
+            PreviousCompanyNames = profile.PreviousCompanyNames,
+            RegisteredOfficeAddress = profile.RegisteredOfficeAddress,
+            RegisteredOfficeIsInDispute = profile.RegisteredOfficeIsInDispute,
+            SicCodes = profile.SicCodes,
+            UndeliverableRegisteredOfficeAddress = profile.UndeliverableRegisteredOfficeAddress
         };
 
         _companies[company.RegistryId] = company;
@@ -312,6 +312,8 @@ public sealed class CompaniesHouseSearchService(
     {
         Name = company.Name,
         RegistryId = company.RegistryId,
-        Address = company.Address
+        Address = company.Address,
+        CompanyStatus = company.CompanyStatus,
+        CompanyType = company.CompanyType
     };
 }

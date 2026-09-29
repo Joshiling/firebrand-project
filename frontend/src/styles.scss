@@ -1,0 +1,61 @@
+@import '@fontsource/source-sans-3/400.css';
+@import '@fontsource/source-sans-3/600.css';
+@import '@fontsource/source-sans-3/700.css';
+
+:root {
+  color-scheme: light;
+  font-family: 'Source Sans 3', sans-serif;
+  font-synthesis: none;
+  --color-canvas: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f0f3f7;
+  --color-text: #20242b;
+  --color-muted: #56606e;
+  --color-border: #d9dee7;
+  --color-border-strong: #adb6c4;
+  --color-action: #2457d6;
+  --color-action-hover: #1b43aa;
+  --color-danger: #b42318;
+  --focus-ring: 3px solid #f3b61f;
+  --focus-offset: 3px;
+  background-color: var(--color-canvas);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 20rem;
+  background: var(--color-canvas);
+}
+
+body {
+  min-width: 20rem;
+  min-height: 100vh;
+  margin: 0;
+  color: var(--color-text);
+  background: var(--color-canvas);
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input {
+  letter-spacing: 0;
+}
+
+::selection {
+  color: #ffffff;
+  background: var(--color-action);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
