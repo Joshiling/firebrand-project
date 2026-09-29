@@ -13,4 +13,15 @@ public interface ICompanyDatabaseService
         string? apiResponse,
         IReadOnlyCollection<CompanyDbRecord> companies,
         CancellationToken cancellationToken = default);
+
+    Task<CompanyVersionResult> SaveCompanyProfileWithVersionAsync(
+        string registryId,
+        int httpStatus,
+        string? rawJson,
+        CompanyDbRecord companyRecord,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<CompanyHistoryRecord>> GetCompanyHistoryAsync(
+        string companyNumber,
+        CancellationToken cancellationToken = default);
 }

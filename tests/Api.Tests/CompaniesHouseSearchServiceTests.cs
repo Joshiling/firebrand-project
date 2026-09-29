@@ -1,5 +1,7 @@
 using System.Net;
 using Api.Database;
+using Api.Exceptions;
+using Api.Services;
 using Microsoft.Extensions.Configuration;
 
 namespace Api.Tests;
@@ -104,15 +106,12 @@ public sealed class CompaniesHouseSearchServiceTests
         Assert.Equal("00002065", company.CompanyNumber);
         Assert.Equal("00002065", company.RegistryId);
 
-        // Verify database logging
-        Assert.Single(_databaseService.SavedLogs);
-        var log = _databaseService.SavedLogs[0];
-        Assert.Equal("00002065", log.UserInput);
-        Assert.Equal(200, log.HttpStatus);
-        Assert.Equal(1, log.ResultCount);
-        Assert.Equal(profileJson, log.ApiResponse);
-        Assert.Single(log.Companies);
-        Assert.Equal("00002065", log.Companies.First().CompanyNumber);
+        Assert.Equal(1, company.VersionCount);
+        var profile = Assert.Single(_databaseService.SavedProfiles);
+        Assert.Equal("00002065", profile.RegistryId);
+        Assert.Equal(200, profile.HttpStatus);
+        Assert.Equal(profileJson, profile.RawJson);
+        Assert.Equal("00002065", profile.Company.CompanyNumber);
     }
 
     [Fact]
@@ -178,6 +177,7 @@ public sealed class CompaniesHouseSearchServiceTests
     private sealed class RecordingCompanyDatabaseService : ICompanyDatabaseService
     {
         public List<SavedLogEntry> SavedLogs { get; } = new();
+        public List<SavedProfileEntry> SavedProfiles { get; } = new();
 
         public Task<long> SaveSearchLogAsync(
             string userInput,
@@ -190,6 +190,28 @@ public sealed class CompaniesHouseSearchServiceTests
             SavedLogs.Add(new SavedLogEntry(userInput, httpStatus, resultCount, apiResponse, companies));
             return Task.FromResult((long)SavedLogs.Count);
         }
+
+        public Task<CompanyVersionResult> SaveCompanyProfileWithVersionAsync(
+            string registryId,
+            int httpStatus,
+            string? rawJson,
+            CompanyDbRecord companyRecord,
+            CancellationToken cancellationToken = default)
+        {
+            SavedProfiles.Add(new SavedProfileEntry(registryId, httpStatus, rawJson, companyRecord));
+            return Task.FromResult(new CompanyVersionResult
+            {
+                SearchLogId = SavedProfiles.Count,
+                CurrentVersion = 1,
+                TotalVersions = 1,
+                HasChanged = true
+            });
+        }
+
+        public Task<IReadOnlyList<CompanyHistoryRecord>> GetCompanyHistoryAsync(
+            string companyNumber,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<CompanyHistoryRecord>>(Array.Empty<CompanyHistoryRecord>());
     }
 
     private sealed record SavedLogEntry(
@@ -198,4 +220,10 @@ public sealed class CompaniesHouseSearchServiceTests
         int ResultCount,
         string? ApiResponse,
         IReadOnlyCollection<CompanyDbRecord> Companies);
+
+    private sealed record SavedProfileEntry(
+        string RegistryId,
+        int HttpStatus,
+        string? RawJson,
+        CompanyDbRecord Company);
 }

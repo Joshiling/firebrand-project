@@ -227,6 +227,199 @@ public sealed class CompanyDatabaseServiceTests : IDisposable
         Assert.Equal("EXT-999", reader.GetString(2));
     }
 
+    [Fact]
+    public async Task SaveCompanyProfileWithVersionAsync_FirstLookupCreatesVersionOne()
+    {
+        var company = CreateCompanyRecord("25 Gresham Street");
+
+        var result = await _databaseService.SaveCompanyProfileWithVersionAsync("00002065", 200, "{}", company);
+        var history = await _databaseService.GetCompanyHistoryAsync("00002065");
+
+        Assert.Equal(1, result.CurrentVersion);
+        Assert.Equal(1, result.TotalVersions);
+        Assert.True(result.HasChanged);
+        var version = Assert.Single(history);
+        Assert.Equal(1, version.VersionNumber);
+        Assert.Equal("25 Gresham Street", version.Address);
+    }
+
+    [Fact]
+    public async Task SaveCompanyProfileWithVersionAsync_IdenticalLookupDoesNotCreateVersion()
+    {
+        var company = CreateCompanyRecord("25 Gresham Street");
+        await _databaseService.SaveCompanyProfileWithVersionAsync("00002065", 200, "{}", company);
+
+        var result = await _databaseService.SaveCompanyProfileWithVersionAsync("00002065", 200, "{}", company);
+        var history = await _databaseService.GetCompanyHistoryAsync("00002065");
+
+        Assert.False(result.HasChanged);
+        Assert.Equal(1, result.CurrentVersion);
+        Assert.Single(history);
+    }
+
+    [Fact]
+    public async Task SaveCompanyProfileWithVersionAsync_ChangedLookupCreatesVersionTwoNewestFirst()
+    {
+        await _databaseService.SaveCompanyProfileWithVersionAsync(
+            "00002065", 200, "{}", CreateCompanyRecord("Old Address"));
+
+        var result = await _databaseService.SaveCompanyProfileWithVersionAsync(
+            "00002065", 200, "{}", CreateCompanyRecord("New Address"));
+        var history = await _databaseService.GetCompanyHistoryAsync("00002065");
+
+        Assert.True(result.HasChanged);
+        Assert.Equal(2, result.CurrentVersion);
+        Assert.Equal(2, result.TotalVersions);
+        Assert.Equal([2, 1], history.Select(item => item.VersionNumber));
+        Assert.Equal("New Address", history[0].Address);
+        Assert.Equal("Old Address", history[1].Address);
+    }
+
+    [Fact]
+    public async Task SaveSearchLogAsync_DoesNotCreateCompanyHistory()
+    {
+        await _databaseService.SaveSearchLogAsync(
+            "Lloyds", 200, 1, "{}", new[] { CreateCompanyRecord("25 Gresham Street") });
+
+        var history = await _databaseService.GetCompanyHistoryAsync("00002065");
+
+        Assert.Empty(history);
+    }
+
+    [Fact]
+    public async Task FirstProfileLookup_AfterSearch_CreatesVersionOne()
+    {
+        var company = CreateCompanyRecord("25 Gresham Street");
+        await _databaseService.SaveSearchLogAsync("Lloyds", 200, 1, "{}", new[] { company });
+
+        var result = await _databaseService.SaveCompanyProfileWithVersionAsync("00002065", 200, "{}", company);
+        var history = await _databaseService.GetCompanyHistoryAsync("00002065");
+
+        Assert.Equal(1, result.CurrentVersion);
+        Assert.Equal(1, Assert.Single(history).VersionNumber);
+    }
+
+    [Fact]
+    public async Task EnsureSchemaAsync_BackfillsLegacyCompanyAsVersionOne()
+    {
+        await using (var connection = new SqliteConnection($"Data Source={_tempDbPath}"))
+        {
+            await connection.OpenAsync();
+            await using var cmd = connection.CreateCommand();
+            cmd.CommandText = """
+                CREATE TABLE Companies (
+                    CompanyNumber TEXT PRIMARY KEY,
+                    CompanyName TEXT NOT NULL,
+                    CompanyStatus TEXT,
+                    IncorporationDate TEXT,
+                    Address TEXT,
+                    ExternalRegistrationNumber TEXT
+                );
+                INSERT INTO Companies (CompanyNumber, CompanyName, CompanyStatus, IncorporationDate, Address)
+                VALUES ('00002065', 'LLOYDS BANK PLC', 'active', '1865-04-20', 'Legacy Address');
+                """;
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        await _databaseService.SaveSearchLogAsync("migration trigger", 200, 0, null, Array.Empty<CompanyDbRecord>());
+        var history = await _databaseService.GetCompanyHistoryAsync("00002065");
+
+        var version = Assert.Single(history);
+        Assert.Equal(1, version.VersionNumber);
+        Assert.Equal("Legacy Address", version.Address);
+    }
+
+    [Fact]
+    public async Task SaveCompanyProfileWithVersionAsync_NormalizedTextDoesNotCreateVersion()
+    {
+        var original = CreateCompanyRecord(" 25 Gresham Street ") with
+        {
+            CompanyName = " Lloyds Bank Plc ",
+            CompanyStatus = " ACTIVE ",
+            IncorporationDate = " 1865-04-20 "
+        };
+        var normalized = CreateCompanyRecord("25 Gresham Street") with
+        {
+            CompanyName = "LLOYDS BANK PLC",
+            CompanyStatus = "active"
+        };
+        await _databaseService.SaveCompanyProfileWithVersionAsync("00002065", 200, "first", original);
+
+        var result = await _databaseService.SaveCompanyProfileWithVersionAsync("00002065", 200, "second", normalized);
+
+        Assert.False(result.HasChanged);
+        Assert.Equal(1, result.TotalVersions);
+    }
+
+    [Fact]
+    public async Task SaveCompanyProfileWithVersionAsync_NullOptionalFieldsRemainStable()
+    {
+        var company = CreateCompanyRecord("25 Gresham Street") with
+        {
+            CompanyStatus = null,
+            IncorporationDate = null,
+            Address = null,
+            ExternalRegistrationNumber = null
+        };
+        await _databaseService.SaveCompanyProfileWithVersionAsync("00002065", 200, null, company);
+
+        var result = await _databaseService.SaveCompanyProfileWithVersionAsync("00002065", 200, null, company);
+        var history = await _databaseService.GetCompanyHistoryAsync("00002065");
+
+        Assert.False(result.HasChanged);
+        var version = Assert.Single(history);
+        Assert.Null(version.CompanyStatus);
+        Assert.Null(version.IncorporationDate);
+        Assert.Null(version.Address);
+        Assert.Null(version.ExternalRegistrationNumber);
+    }
+
+    [Fact]
+    public async Task GetCompanyHistoryAsync_UnknownCompanyReturnsEmptyList()
+    {
+        var history = await _databaseService.GetCompanyHistoryAsync("99999999");
+
+        Assert.Empty(history);
+    }
+
+    [Fact]
+    public async Task EnsureSchemaAsync_BackfillRunsOnlyOnce()
+    {
+        await using (var connection = new SqliteConnection($"Data Source={_tempDbPath}"))
+        {
+            await connection.OpenAsync();
+            await using var cmd = connection.CreateCommand();
+            cmd.CommandText = """
+                CREATE TABLE Companies (
+                    CompanyNumber TEXT PRIMARY KEY,
+                    CompanyName TEXT NOT NULL,
+                    CompanyStatus TEXT,
+                    IncorporationDate TEXT,
+                    Address TEXT,
+                    ExternalRegistrationNumber TEXT
+                );
+                INSERT INTO Companies (CompanyNumber, CompanyName)
+                VALUES ('00002065', 'LLOYDS BANK PLC');
+                """;
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        await _databaseService.SaveSearchLogAsync("first trigger", 200, 0, null, Array.Empty<CompanyDbRecord>());
+        await _databaseService.SaveSearchLogAsync("second trigger", 200, 0, null, Array.Empty<CompanyDbRecord>());
+        var history = await _databaseService.GetCompanyHistoryAsync("00002065");
+
+        Assert.Single(history);
+    }
+
+    private static CompanyDbRecord CreateCompanyRecord(string address) => new()
+    {
+        CompanyNumber = "00002065",
+        CompanyName = "LLOYDS BANK PLC",
+        CompanyStatus = "active",
+        IncorporationDate = "1865-04-20",
+        Address = address
+    };
+
     private sealed class TestHostEnvironment : IHostEnvironment
     {
         public string EnvironmentName { get; set; } = Environments.Development;
