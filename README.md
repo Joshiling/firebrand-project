@@ -4,6 +4,14 @@
 
 The API key is read only by the ASP.NET backend. Never place it in Angular source, proxy configuration, or committed settings.
 
+To persist the key securely for local development, set it with .NET User Secrets:
+
+```powershell
+dotnet user-secrets --project api/api.csproj set "CompaniesHouse:ApiKey" "<your-api-key>"
+```
+
+Alternatively, set it for the current PowerShell session as shown below.
+
 ### Run the backend
 
 Set the key in the same PowerShell terminal that will run the API:
