@@ -12,4 +12,8 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="api/**/*.cs" />
+  </ItemGroup>
+
 </Project>

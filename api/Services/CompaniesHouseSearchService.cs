@@ -7,6 +7,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.WebUtilities;
 using Api.Database;
 using Api.DTOs.CompaniesHouse;
+using Api.Exceptions;
+using Api.Models;
+
+namespace Api.Services;
 
 public sealed class CompaniesHouseSearchService(
     IHttpClientFactory httpClientFactory,

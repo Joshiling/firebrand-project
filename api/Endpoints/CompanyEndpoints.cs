@@ -1,5 +1,10 @@
+using Api.Exceptions;
+using Api.Models;
+using Api.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+
+namespace Api.Endpoints;
 
 public static class CompanyEndpoints
 {

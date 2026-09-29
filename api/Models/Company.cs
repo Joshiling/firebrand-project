@@ -1,5 +1,7 @@
 using Api.DTOs.CompaniesHouse;
 
+namespace Api.Models;
+
 /// <summary>Represents the full company profile returned by the API.</summary>
 public sealed record Company
 {

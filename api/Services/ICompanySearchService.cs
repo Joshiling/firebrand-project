@@ -1,3 +1,7 @@
+using Api.Models;
+
+namespace Api.Services;
+
 public interface ICompanySearchService
 {
     Task<IReadOnlyList<CompanySearch>> SearchAsync(
