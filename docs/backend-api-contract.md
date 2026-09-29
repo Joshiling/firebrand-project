@@ -104,6 +104,37 @@ Return `200 OK` with one full company profile. The supplied Lloyds response is t
 
 The backend maps accounts, confirmation statements, company flags, previous names, SIC codes, registered address, links, and other profile metadata. Missing optional Companies House fields remain nullable so the details page can show an explicit fallback. Return `404 Not Found` if the company does not exist.
 
+## Search activity
+
+### Frontend request
+
+```http
+GET /search_logs?page=1&pageSize=20
+```
+
+This route reads search activity from `database.db`, ordered newest first. `page` must be at least 1 and `pageSize` must be between 1 and 100. Both values default to 1 and 20 respectively.
+
+### Successful response
+
+```json
+{
+  "items": [
+    {
+      "searchLogId": 42,
+      "userInput": "Lloyds",
+      "searchedAt": "2026-09-29T10:30:00+00:00",
+      "resultCount": 100,
+      "httpStatus": 200
+    }
+  ],
+  "totalResults": 1,
+  "page": 1,
+  "pageSize": 20
+}
+```
+
+The response deliberately excludes `ApiResponse`; the activity screen needs operational metadata, not the potentially large raw Companies House payload.
+
 ## Error responses
 
 Use these HTTP statuses consistently for all three routes:

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Data.Sqlite;
 
 namespace Api.Database;
@@ -8,6 +9,52 @@ public sealed class CompanyDatabaseService(
     ILogger<CompanyDatabaseService> logger) : ICompanyDatabaseService
 {
     private string? _resolvedConnectionString;
+
+    public async Task<SearchLogPage> GetSearchLogsAsync(
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(page, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(pageSize, 1);
+
+        await using var connection = new SqliteConnection(GetResolvedConnectionString());
+        await connection.OpenAsync(cancellationToken);
+        await EnsureSchemaAsync(connection, cancellationToken);
+
+        await using var countCommand = connection.CreateCommand();
+        countCommand.CommandText = "SELECT COUNT(*) FROM search_logs;";
+        var totalResults = Convert.ToInt32(await countCommand.ExecuteScalarAsync(cancellationToken));
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT SearchLogId, UserInput, SearchedAt, ResultCount, HttpStatus
+            FROM search_logs
+            ORDER BY datetime(SearchedAt) DESC, SearchLogId DESC
+            LIMIT @PageSize OFFSET @Offset;
+            """;
+        command.Parameters.AddWithValue("@PageSize", pageSize);
+        command.Parameters.AddWithValue("@Offset", (page - 1) * pageSize);
+
+        var items = new List<SearchLogEntry>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var searchedAt = DateTimeOffset.Parse(
+                reader.GetString(2),
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+
+            items.Add(new SearchLogEntry(
+                reader.GetInt64(0),
+                reader.GetString(1),
+                searchedAt,
+                reader.IsDBNull(3) ? 0 : reader.GetInt32(3),
+                reader.IsDBNull(4) ? 0 : reader.GetInt32(4)));
+        }
+
+        return new SearchLogPage(items, totalResults, page, pageSize);
+    }
 
     public async Task<long> SaveSearchLogAsync(
         string userInput,

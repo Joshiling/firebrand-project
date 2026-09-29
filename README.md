@@ -5,9 +5,11 @@
 This project uses .NET User Secrets to store API keys securely. API keys are **not stored in the repository** and should never be committed to Git.
 
 ### 1. Get a Companies House API Key
+
 Create an API key from the Companies House Developer Hub.
 
 ### 2. Add Your Key to User Secrets
+
 From the project directory containing the `.csproj` file, run:
 
 ```shell
@@ -143,6 +145,7 @@ CompanyLens is the Angular company search and verification frontend for client o
 ## Current scope
 
 - Search by partial company name or exact registration number
+- Review database-backed search activity from the top navigation
 - Display company name, registration number, status, type, and registered address
 - Open a separate full-profile page for each company
 - Preserve the submitted query and page when navigating between results and details
@@ -188,9 +191,10 @@ The confirmed request, response, validation, error, CORS, and API-key requiremen
 GET /registry_id?registry_id=00002065
 GET /name?name=Lloyds
 GET /registry_id/00002065
+GET /search_logs?page=1&pageSize=20
 ```
 
-The first two routes return lists of `Company` results. The third route returns the profile used by the company-details page. Angular calls these relative paths through its development proxy.
+The first two routes return lists of `Company` results. The third route returns the profile used by the company-details page. The final route returns database search activity in reverse chronological order without exposing the stored raw API responses. Angular calls these relative paths through its development proxy.
 
 The tested query classifier handles eight digits or two letters followed by six digits as registration numbers. The backend returns the first 100 Companies House matches, and the frontend paginates that bounded list locally. This avoids Companies House result-window errors for broad names. Components remain isolated from endpoint selection through `CompanySearchService`.
 

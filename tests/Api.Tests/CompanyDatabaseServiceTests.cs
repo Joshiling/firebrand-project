@@ -182,6 +182,35 @@ public sealed class CompanyDatabaseServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetSearchLogsAsync_ReturnsNewestPageWithoutRawApiResponse()
+    {
+        await _databaseService.SaveSearchLogAsync(
+            "first search",
+            200,
+            4,
+            "{\"large\":\"response\"}",
+            Array.Empty<CompanyDbRecord>());
+        var newestId = await _databaseService.SaveSearchLogAsync(
+            "latest search",
+            502,
+            0,
+            "upstream failure",
+            Array.Empty<CompanyDbRecord>());
+
+        var result = await _databaseService.GetSearchLogsAsync(page: 1, pageSize: 1);
+
+        var log = Assert.Single(result.Items);
+        Assert.Equal(2, result.TotalResults);
+        Assert.Equal(1, result.Page);
+        Assert.Equal(1, result.PageSize);
+        Assert.Equal(newestId, log.SearchLogId);
+        Assert.Equal("latest search", log.UserInput);
+        Assert.Equal(0, log.ResultCount);
+        Assert.Equal(502, log.HttpStatus);
+        Assert.Equal(TimeSpan.Zero, log.SearchedAt.Offset);
+    }
+
+    [Fact]
     public async Task SaveSearchLogAsync_Upsert_PreservesExistingExternalRegistrationNumberWhenNull()
     {
         // 1. Insert initial company with ExternalRegistrationNumber

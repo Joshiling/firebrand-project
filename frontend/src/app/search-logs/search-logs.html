@@ -1,0 +1,98 @@
+<div class="page-heading">
+  <p class="eyebrow">Database activity</p>
+  <h1>Search activity</h1>
+  <p class="page-heading__summary">
+    Review company lookups recorded by the secure backend service.
+  </p>
+</div>
+
+<section class="logs-panel" aria-labelledby="logs-heading" [attr.aria-busy]="loading()">
+  <div class="logs-heading">
+    <div>
+      <ng-icon name="lucideActivity" size="20" aria-hidden="true" />
+      <h2 id="logs-heading">Recent searches</h2>
+    </div>
+    @if (result(); as logPage) {
+      <span class="result-count">{{ logPage.totalResults }} recorded</span>
+    }
+  </div>
+
+  <div class="announcer" aria-live="polite" aria-atomic="true">
+    @if (loading()) {
+      Loading search activity
+    } @else if (requestFailed()) {
+      Search activity could not be loaded
+    } @else if (result(); as logPage) {
+      {{ logPage.totalResults }} searches recorded
+    }
+  </div>
+
+  @if (loading()) {
+    <div class="state-message">
+      <span class="spinner" aria-hidden="true"></span>
+      <p>Loading recorded searches...</p>
+    </div>
+  } @else if (requestFailed()) {
+    <div class="state-message state-message--error" role="alert">
+      <ng-icon name="lucideCircleAlert" size="28" aria-hidden="true" />
+      <h3>We could not load the activity log</h3>
+      <p>Please check that the backend and database are available, then try again.</p>
+      <button type="button" (click)="retry()">
+        <ng-icon name="lucideRefreshCw" size="17" aria-hidden="true" />
+        Try again
+      </button>
+    </div>
+  } @else if (result(); as logPage) {
+    @if (logPage.items.length > 0) {
+      <ol class="logs-list">
+        @for (log of logPage.items; track log.searchLogId) {
+          <li class="log-row">
+            <div class="log-query">
+              <span class="query-label">Search input</span>
+              <strong>{{ log.userInput }}</strong>
+            </div>
+            <dl>
+              <div>
+                <dt>Searched</dt>
+                <dd>{{ formatTimestamp(log.searchedAt) }}</dd>
+              </div>
+              <div>
+                <dt>Results</dt>
+                <dd>{{ log.resultCount }}</dd>
+              </div>
+              <div>
+                <dt>Outcome</dt>
+                <dd>
+                  <span
+                    class="status"
+                    [class.status--success]="log.httpStatus >= 200 && log.httpStatus < 300"
+                    [class.status--error]="log.httpStatus < 200 || log.httpStatus >= 300"
+                  >
+                    {{ statusLabel(log.httpStatus) }} · {{ log.httpStatus }}
+                  </span>
+                </dd>
+              </div>
+            </dl>
+          </li>
+        }
+      </ol>
+
+      @if (logPage.totalResults > pageSize) {
+        <app-pagination
+          label="Activity log pages"
+          [currentPage]="logPage.page"
+          [totalResults]="logPage.totalResults"
+          [pageSize]="logPage.pageSize"
+          [disabled]="loading()"
+          (pageChange)="changePage($event)"
+        />
+      }
+    } @else {
+      <div class="state-message">
+        <ng-icon name="lucideDatabase" size="28" aria-hidden="true" />
+        <h3>No searches recorded yet</h3>
+        <p>Company searches will appear here after they are saved by the backend.</p>
+      </div>
+    }
+  }
+</section>

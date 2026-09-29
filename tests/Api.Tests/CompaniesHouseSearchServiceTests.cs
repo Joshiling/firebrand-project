@@ -179,6 +179,12 @@ public sealed class CompaniesHouseSearchServiceTests
     {
         public List<SavedLogEntry> SavedLogs { get; } = new();
 
+        public Task<SearchLogPage> GetSearchLogsAsync(
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new SearchLogPage([], 0, page, pageSize));
+
         public Task<long> SaveSearchLogAsync(
             string userInput,
             int httpStatus,

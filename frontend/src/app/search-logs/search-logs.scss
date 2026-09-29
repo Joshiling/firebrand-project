@@ -1,0 +1,279 @@
+:host {
+  display: block;
+}
+
+.page-heading {
+  max-width: 42rem;
+  margin-bottom: 2rem;
+}
+
+.eyebrow,
+.query-label,
+dt {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  color: var(--color-action);
+  letter-spacing: 0.06em;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 0;
+  color: var(--color-text);
+  font-size: 2rem;
+  line-height: 1.2;
+}
+
+.page-heading__summary {
+  margin: 0.625rem 0 0;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+.logs-heading,
+.logs-heading > div {
+  display: flex;
+  align-items: center;
+}
+
+.logs-heading {
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.875rem;
+}
+
+.logs-heading > div {
+  gap: 0.625rem;
+  color: var(--color-action);
+}
+
+h2 {
+  margin-bottom: 0;
+  color: var(--color-text);
+  font-size: 1.25rem;
+}
+
+.result-count {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.logs-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.log-row {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(24rem, 1.8fr);
+  gap: 2rem;
+  padding: 1.25rem;
+  background: var(--color-surface);
+}
+
+.log-row + .log-row {
+  border-top: 1px solid var(--color-border);
+}
+
+.log-query {
+  min-width: 0;
+}
+
+.query-label {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.log-query strong {
+  display: block;
+  overflow-wrap: anywhere;
+  color: var(--color-text);
+  font-size: 1.0625rem;
+}
+
+dl {
+  display: grid;
+  grid-template-columns: 1.35fr 0.55fr 1fr;
+  gap: 1rem;
+  margin: 0;
+}
+
+dl > div {
+  min-width: 0;
+}
+
+dt {
+  margin-bottom: 0.25rem;
+}
+
+dd {
+  margin: 0;
+  color: var(--color-text);
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+}
+
+.status {
+  display: inline-block;
+  padding: 0.1875rem 0.5rem;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status--success {
+  color: #17633d;
+  background: #e8f7ef;
+  border-color: #a9d8bf;
+}
+
+.status--error {
+  color: #7a271a;
+  background: #fff5f3;
+  border-color: #e8aaa2;
+}
+
+.state-message {
+  min-height: 14rem;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.5rem;
+  padding: 2.5rem 1.5rem;
+  color: var(--color-muted);
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: 0.75rem;
+}
+
+.state-message h3,
+.state-message p {
+  margin-bottom: 0;
+}
+
+.state-message h3 {
+  color: var(--color-text);
+  font-size: 1.125rem;
+}
+
+.state-message--error {
+  color: #7a271a;
+  background: #fff5f3;
+  border-color: #e8aaa2;
+}
+
+button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 2.75rem;
+  padding: 0.625rem 1rem;
+  color: #ffffff;
+  background: var(--color-action);
+  border: 1px solid var(--color-action);
+  border-radius: 0.5rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--color-action-hover);
+  border-color: var(--color-action-hover);
+}
+
+button:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.spinner {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 3px solid var(--color-action);
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+.announcer {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 52rem) {
+  .log-row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 36rem) {
+  dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  dl > div:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 28rem) {
+  .logs-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .log-row {
+    padding: 1rem;
+  }
+
+  dl {
+    grid-template-columns: 1fr;
+  }
+
+  dl > div:last-child {
+    grid-column: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 1.5s;
+  }
+}
