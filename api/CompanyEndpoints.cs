@@ -35,8 +35,8 @@ public static class CompanyEndpoints
 
     private static async Task<Results<Ok<IReadOnlyList<CompanySearch>>, BadRequest<ProblemDetails>, ProblemHttpResult>> SearchByRegistryId(
         [FromQuery(Name = "registry_id")] string? registryId,
-        [FromQuery(Name = "company_status")] string[]? companyStatuses,
-        [FromQuery(Name = "company_type")] string[]? companyTypes,
+        [FromQuery(Name = "company_status")] CompanyStatusFilter[]? companyStatuses,
+        [FromQuery(Name = "company_type")] CompanyTypeFilter[]? companyTypes,
         [FromQuery(Name = "location")] string? location,
         ICompanySearchService companySearchService,
         CancellationToken cancellationToken)
@@ -58,8 +58,8 @@ public static class CompanyEndpoints
 
     private static async Task<Results<Ok<IReadOnlyList<CompanySearch>>, BadRequest<ProblemDetails>, ProblemHttpResult>> SearchByName(
         [FromQuery(Name = "name")] string? name,
-        [FromQuery(Name = "company_status")] string[]? companyStatuses,
-        [FromQuery(Name = "company_type")] string[]? companyTypes,
+        [FromQuery(Name = "company_status")] CompanyStatusFilter[]? companyStatuses,
+        [FromQuery(Name = "company_type")] CompanyTypeFilter[]? companyTypes,
         [FromQuery(Name = "location")] string? location,
         ICompanySearchService companySearchService,
         CancellationToken cancellationToken)
@@ -122,24 +122,22 @@ public static class CompanyEndpoints
     }
 
     private static CompanySearchFilters? CreateFilters(
-        string[]? companyStatuses,
-        string[]? companyTypes,
+        CompanyStatusFilter[]? companyStatuses,
+        CompanyTypeFilter[]? companyTypes,
         string? location,
         out string? validationError)
     {
-        var statuses = NormalizeFilterValues(companyStatuses);
-        var types = NormalizeFilterValues(companyTypes);
         var normalizedLocation = location?.Trim();
 
-        if (statuses.Any(string.IsNullOrWhiteSpace) || statuses.Any(value => value.Length > 100))
+        if ((companyStatuses ?? []).Any(value => !Enum.IsDefined(value)))
         {
-            validationError = "Each company_status value must contain 1 to 100 characters.";
+            validationError = "Each company_status value must be a supported option.";
             return null;
         }
 
-        if (types.Any(string.IsNullOrWhiteSpace) || types.Any(value => value.Length > 100))
+        if ((companyTypes ?? []).Any(value => !Enum.IsDefined(value)))
         {
-            validationError = "Each company_type value must contain 1 to 100 characters.";
+            validationError = "Each company_type value must be a supported option.";
             return null;
         }
 
@@ -152,17 +150,11 @@ public static class CompanyEndpoints
         validationError = null;
         return new CompanySearchFilters
         {
-            CompanyStatuses = statuses,
-            CompanyTypes = types,
+            CompanyStatuses = (companyStatuses ?? []).Distinct().ToArray(),
+            CompanyTypes = (companyTypes ?? []).Distinct().ToArray(),
             Location = normalizedLocation
         };
     }
-
-    private static IReadOnlyList<string> NormalizeFilterValues(string[]? values) => (values ?? [])
-        .SelectMany(value => value.Split(','))
-        .Select(value => value.Trim())
-        .Distinct(StringComparer.OrdinalIgnoreCase)
-        .ToArray();
 
     private static ProblemHttpResult CreateApiProblem(CompaniesHouseApiException exception) =>
         TypedResults.Problem(

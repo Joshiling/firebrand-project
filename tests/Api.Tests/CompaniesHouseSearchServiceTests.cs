@@ -1,6 +1,7 @@
 using System.Net;
 using Api.Database;
 using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace Api.Tests;
 
@@ -77,6 +78,126 @@ public sealed class CompaniesHouseSearchServiceTests
     }
 
     [Fact]
+    public async Task SearchByNameAsync_WithFilters_UsesAdvancedSearchAndMapsResults()
+    {
+        const string searchJson = """
+                        {
+                            "items": [
+                                {
+                                    "company_name": "LLOYDS BANK PLC",
+                                    "company_number": "00002065",
+                                    "company_status": "active",
+                                    "company_type": "plc",
+                                    "registered_office_address": {
+                                        "address_line_1": "25 Gresham Street",
+                                        "locality": "London"
+                                    }
+                                }
+                            ],
+                            "total_results": 1
+                        }
+                        """;
+        Uri? requestUri = null;
+        var httpClientFactory = CreateHttpClientFactory(
+                HttpStatusCode.OK,
+                searchJson,
+                request => requestUri = request.RequestUri);
+        var service = new CompaniesHouseSearchService(httpClientFactory, CreateConfiguration(), _databaseService);
+
+        var results = await service.SearchByNameAsync(
+                "Lloyds & Co",
+                new CompanySearchFilters
+                {
+                    CompanyStatuses = [CompanyStatusFilter.Active, CompanyStatusFilter.Dissolved],
+                    CompanyTypes = [CompanyTypeFilter.Plc],
+                    Location = "London"
+                },
+                CancellationToken.None);
+
+        Assert.Single(results);
+        Assert.Equal("LLOYDS BANK PLC", results[0].Name);
+        Assert.Equal("00002065", results[0].RegistryId);
+        Assert.Equal("active", results[0].CompanyStatus);
+        Assert.Equal("plc", results[0].CompanyType);
+        Assert.NotNull(requestUri);
+        Assert.Equal("/advanced-search/companies", requestUri.AbsolutePath);
+        var query = QueryHelpers.ParseQuery(requestUri.Query);
+        Assert.Equal("Lloyds & Co", query["company_name_includes"]);
+        Assert.Equal(new[] { "active", "dissolved" }, query["company_status"].ToArray());
+        Assert.Equal("plc", query["company_type"]);
+        Assert.Equal("London", query["location"]);
+        Assert.Equal("100", query["size"]);
+        Assert.Equal("0", query["start_index"]);
+        Assert.Equal("Lloyds & Co [company_status=active,dissolved; company_type=plc; location=London]", _databaseService.SavedLogs[0].UserInput);
+    }
+
+    [Fact]
+    public async Task SearchByRegistryIdAsync_WithFilters_FiltersTheExactIdResultsLocally()
+    {
+        const string searchJson = """
+                        {
+                            "items": [
+                                {
+                                    "company_number": "00002065",
+                                    "title": "LLOYDS BANK PLC",
+                                    "company_status": "active",
+                                    "company_type": "plc",
+                                    "address": { "address_line_1": "25 Gresham Street", "locality": "London" }
+                                },
+                                {
+                                    "company_number": "00002066",
+                                    "title": "OTHER COMPANY LTD",
+                                    "company_status": "dissolved",
+                                    "company_type": "ltd",
+                                    "address": { "locality": "Bristol" }
+                                }
+                            ],
+                            "total_results": 2
+                        }
+                        """;
+        Uri? requestUri = null;
+        var httpClientFactory = CreateHttpClientFactory(
+                HttpStatusCode.OK,
+                searchJson,
+                request => requestUri = request.RequestUri);
+        var service = new CompaniesHouseSearchService(httpClientFactory, CreateConfiguration(), _databaseService);
+
+        var results = await service.SearchByRegistryIdAsync(
+                "00002065",
+                new CompanySearchFilters
+                {
+                    CompanyStatuses = [CompanyStatusFilter.Active],
+                    CompanyTypes = [CompanyTypeFilter.Plc],
+                    Location = "london"
+                },
+                CancellationToken.None);
+
+        var result = Assert.Single(results);
+        Assert.Equal("00002065", result.RegistryId);
+        Assert.NotNull(requestUri);
+        Assert.Equal("/search/companies", requestUri.AbsolutePath);
+        Assert.Equal("00002065", QueryHelpers.ParseQuery(requestUri.Query)["q"]);
+        Assert.Equal("00002065 [company_status=active; company_type=plc; location=london]", _databaseService.SavedLogs[0].UserInput);
+        Assert.Equal(1, _databaseService.SavedLogs[0].ResultCount);
+    }
+
+    [Fact]
+    public async Task SearchByNameAsync_WhenAdvancedSearchReturnsNotFound_ReturnsEmptyList()
+    {
+        var httpClientFactory = CreateHttpClientFactory(HttpStatusCode.NotFound, "");
+        var service = new CompaniesHouseSearchService(httpClientFactory, CreateConfiguration(), _databaseService);
+
+        var results = await service.SearchByNameAsync(
+                "No matching company",
+                new CompanySearchFilters { CompanyTypes = [CompanyTypeFilter.Plc] },
+                CancellationToken.None);
+
+        Assert.Empty(results);
+        Assert.Equal(200, _databaseService.SavedLogs[0].HttpStatus);
+        Assert.Equal(0, _databaseService.SavedLogs[0].ResultCount);
+    }
+
+    [Fact]
     public async Task GetByRegistryIdAsync_OnSuccess_LogsLookupAndReturnsCompany()
     {
         // Arrange
@@ -147,9 +268,12 @@ public sealed class CompaniesHouseSearchServiceTests
             })
             .Build();
 
-    private static IHttpClientFactory CreateHttpClientFactory(HttpStatusCode statusCode, string content)
+    private static IHttpClientFactory CreateHttpClientFactory(
+        HttpStatusCode statusCode,
+        string content,
+        Action<HttpRequestMessage>? requestObserver = null)
     {
-        var handler = new MockHttpMessageHandler(statusCode, content);
+        var handler = new MockHttpMessageHandler(statusCode, content, requestObserver);
         var client = new HttpClient(handler)
         {
             BaseAddress = new Uri("https://api.company-information.service.gov.uk/")
@@ -163,10 +287,14 @@ public sealed class CompaniesHouseSearchServiceTests
         public HttpClient CreateClient(string name) => client;
     }
 
-    private sealed class MockHttpMessageHandler(HttpStatusCode statusCode, string content) : HttpMessageHandler
+    private sealed class MockHttpMessageHandler(
+        HttpStatusCode statusCode,
+        string content,
+        Action<HttpRequestMessage>? requestObserver) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            requestObserver?.Invoke(request);
             var response = new HttpResponseMessage(statusCode)
             {
                 Content = new StringContent(content)

@@ -305,12 +305,12 @@ public sealed class CompaniesHouseSearchService(
 
         foreach (var status in filters.CompanyStatuses)
         {
-            query.Add(new KeyValuePair<string, string?>("company_status", status));
+            query.Add(new KeyValuePair<string, string?>("company_status", status.ToCompaniesHouseValue()));
         }
 
         foreach (var type in filters.CompanyTypes)
         {
-            query.Add(new KeyValuePair<string, string?>("company_type", type));
+            query.Add(new KeyValuePair<string, string?>("company_type", type.ToCompaniesHouseValue()));
         }
 
         if (!string.IsNullOrWhiteSpace(filters.Location))
@@ -344,9 +344,15 @@ public sealed class CompaniesHouseSearchService(
         }
 
         var matchesStatus = filters.CompanyStatuses.Count == 0
-            || filters.CompanyStatuses.Contains(item.CompanyStatus ?? string.Empty, StringComparer.OrdinalIgnoreCase);
+            || filters.CompanyStatuses.Any(status => string.Equals(
+                status.ToCompaniesHouseValue(),
+                item.CompanyStatus,
+                StringComparison.OrdinalIgnoreCase));
         var matchesType = filters.CompanyTypes.Count == 0
-            || filters.CompanyTypes.Contains(item.CompanyType ?? string.Empty, StringComparer.OrdinalIgnoreCase);
+            || filters.CompanyTypes.Any(type => string.Equals(
+                type.ToCompaniesHouseValue(),
+                item.CompanyType,
+                StringComparison.OrdinalIgnoreCase));
         var address = FormatAddress(item.Address) ?? item.AddressSnippet;
         var matchesLocation = string.IsNullOrWhiteSpace(filters.Location)
             || (address?.Contains(filters.Location, StringComparison.OrdinalIgnoreCase) ?? false);
@@ -364,12 +370,12 @@ public sealed class CompaniesHouseSearchService(
         var filterParts = new List<string>();
         if (filters.CompanyStatuses.Count > 0)
         {
-            filterParts.Add($"company_status={string.Join(',', filters.CompanyStatuses)}");
+            filterParts.Add($"company_status={string.Join(',', filters.CompanyStatuses.Select(value => value.ToCompaniesHouseValue()))}");
         }
 
         if (filters.CompanyTypes.Count > 0)
         {
-            filterParts.Add($"company_type={string.Join(',', filters.CompanyTypes)}");
+            filterParts.Add($"company_type={string.Join(',', filters.CompanyTypes.Select(value => value.ToCompaniesHouseValue()))}");
         }
 
         if (!string.IsNullOrWhiteSpace(filters.Location))
