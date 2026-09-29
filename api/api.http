@@ -1,0 +1,24 @@
+@api_HostAddress = http://localhost:5088
+
+GET {{api_HostAddress}}/registry_id?registry_id=00123456
+Accept: application/json
+
+###
+
+GET {{api_HostAddress}}/name?name=Acme%20Holdings
+Accept: application/json
+
+###
+
+GET {{api_HostAddress}}/registry_id/00123456
+Accept: application/json
+
+###
+
+GET {{api_HostAddress}}/registry_id?registry_id=12A
+Accept: application/json
+
+###
+
+GET {{api_HostAddress}}/name?name=
+Accept: application/json
