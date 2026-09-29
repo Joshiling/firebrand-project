@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Api.DTOs.CompaniesHouse;
+using Api.Models;
 
 namespace Api.Tests;
 

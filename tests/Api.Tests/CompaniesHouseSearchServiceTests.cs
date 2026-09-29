@@ -1,5 +1,7 @@
 using System.Net;
 using Api.Database;
+using Api.Exceptions;
+using Api.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.WebUtilities;
 
