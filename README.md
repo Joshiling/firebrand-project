@@ -109,3 +109,5 @@ curl.exe -u "${apikey}:" https://api.company-information.service.gov.uk/company/
 ```shell
 curl.exe -u "${apikey}:" https://api.company-information.service.gov.uk/search/companies?q=tesco
 ```
+### Database
+![DB UML Diagram](DB_UML_Diagram.png)  
