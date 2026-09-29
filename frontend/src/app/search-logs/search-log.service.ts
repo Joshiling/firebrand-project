@@ -7,8 +7,12 @@ import { SearchLogPage } from './search-log.model';
 export class SearchLogService {
   private readonly http = inject(HttpClient);
 
-  getPage(page: number, pageSize: number): Observable<SearchLogPage> {
-    const params = new HttpParams().set('page', page).set('pageSize', pageSize);
+  getPage(page: number, pageSize: number, query = ''): Observable<SearchLogPage> {
+    let params = new HttpParams().set('page', page).set('pageSize', pageSize);
+    if (query) {
+      params = params.set('query', query);
+    }
+
     return this.http.get<SearchLogPage>('/search_logs', { params });
   }
 }

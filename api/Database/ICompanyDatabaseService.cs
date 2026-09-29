@@ -6,6 +6,7 @@ public interface ICompanyDatabaseService
     Task<SearchLogPage> GetSearchLogsAsync(
         int page,
         int pageSize,
+        string? query = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

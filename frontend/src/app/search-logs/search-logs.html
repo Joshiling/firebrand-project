@@ -6,6 +6,32 @@
   </p>
 </div>
 
+<section class="filter-panel" aria-labelledby="filter-heading">
+  <form [formGroup]="filterForm" (ngSubmit)="submitFilter()" novalidate>
+    <label id="filter-heading" for="log-query">Search recorded activity</label>
+    <div class="filter-controls">
+      <div class="input-wrap">
+        <ng-icon name="lucideSearch" size="20" aria-hidden="true" />
+        <input
+          id="log-query"
+          type="search"
+          formControlName="query"
+          maxlength="100"
+          autocomplete="off"
+          placeholder="Search input, company name or number"
+        />
+      </div>
+      @if (submittedQuery()) {
+        <button class="button button--secondary" type="button" (click)="clearFilter()">
+          <ng-icon name="lucideX" size="18" aria-hidden="true" />
+          Clear
+        </button>
+      }
+      <button class="button" type="submit" [disabled]="loading()">Search logs</button>
+    </div>
+  </form>
+</section>
+
 <section class="logs-panel" aria-labelledby="logs-heading" [attr.aria-busy]="loading()">
   <div class="logs-heading">
     <div>
@@ -13,7 +39,9 @@
       <h2 id="logs-heading">Recent searches</h2>
     </div>
     @if (result(); as logPage) {
-      <span class="result-count">{{ logPage.totalResults }} recorded</span>
+      <span class="result-count">
+        {{ logPage.totalResults }} {{ submittedQuery() ? 'matching' : 'recorded' }}
+      </span>
     }
   </div>
 
@@ -50,6 +78,10 @@
             <div class="log-query">
               <span class="query-label">Search input</span>
               <strong>{{ log.userInput }}</strong>
+            </div>
+            <div class="log-company">
+              <span class="query-label">Company</span>
+              <span>{{ log.companyName || 'Multiple or none' }}</span>
             </div>
             <dl>
               <div>
@@ -90,8 +122,13 @@
     } @else {
       <div class="state-message">
         <ng-icon name="lucideDatabase" size="28" aria-hidden="true" />
-        <h3>No searches recorded yet</h3>
-        <p>Company searches will appear here after they are saved by the backend.</p>
+        @if (submittedQuery()) {
+          <h3>No matching activity</h3>
+          <p>Try another search input, company name or company number.</p>
+        } @else {
+          <h3>No searches recorded yet</h3>
+          <p>Company searches will appear here after they are saved by the backend.</p>
+        }
       </div>
     }
   }

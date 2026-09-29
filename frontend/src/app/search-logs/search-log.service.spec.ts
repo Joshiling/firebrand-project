@@ -29,6 +29,7 @@ describe('SearchLogService', () => {
         {
           searchLogId: 8,
           userInput: 'Lloyds',
+          companyName: 'LLOYDS BANK PLC',
           searchedAt: '2026-09-29T10:30:00+00:00',
           resultCount: 100,
           httpStatus: 200,
@@ -44,5 +45,13 @@ describe('SearchLogService', () => {
       page: 2,
       items: [{ userInput: 'Lloyds', httpStatus: 200 }],
     });
+  });
+
+  it('passes a database search term to the backend', async () => {
+    const resultPromise = firstValueFrom(service.getPage(1, 20, 'Lloyds Bank'));
+    const request = http.expectOne('/search_logs?page=1&pageSize=20&query=Lloyds%20Bank');
+    request.flush({ items: [], totalResults: 0, page: 1, pageSize: 20, query: 'Lloyds Bank' });
+
+    await expect(resultPromise).resolves.toMatchObject({ query: 'Lloyds Bank' });
   });
 });

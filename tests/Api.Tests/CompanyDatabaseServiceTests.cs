@@ -205,9 +205,30 @@ public sealed class CompanyDatabaseServiceTests : IDisposable
         Assert.Equal(1, result.PageSize);
         Assert.Equal(newestId, log.SearchLogId);
         Assert.Equal("latest search", log.UserInput);
+        Assert.Null(log.CompanyName);
         Assert.Equal(0, log.ResultCount);
         Assert.Equal(502, log.HttpStatus);
         Assert.Equal(TimeSpan.Zero, log.SearchedAt.Offset);
+    }
+
+    [Fact]
+    public async Task GetSearchLogsAsync_FiltersByLinkedCompanyAndReturnsSingleCompanyName()
+    {
+        var company = new CompanyDbRecord
+        {
+            CompanyNumber = "00002065",
+            CompanyName = "LLOYDS BANK PLC",
+            CompanyStatus = "active"
+        };
+        await _databaseService.SaveSearchLogAsync("00002065", 200, 1, null, [company]);
+        await _databaseService.SaveSearchLogAsync("unrelated", 200, 0, null, []);
+
+        var result = await _databaseService.GetSearchLogsAsync(1, 20, "lloyds");
+
+        var log = Assert.Single(result.Items);
+        Assert.Equal(1, result.TotalResults);
+        Assert.Equal("lloyds", result.Query);
+        Assert.Equal("LLOYDS BANK PLC", log.CompanyName);
     }
 
     [Fact]

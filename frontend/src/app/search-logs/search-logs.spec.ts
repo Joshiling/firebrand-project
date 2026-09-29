@@ -7,26 +7,30 @@ import { SearchLogs } from './search-logs';
 
 class SearchLogServiceStub {
   shouldFail = false;
-  readonly getPage = vi.fn((page: number, pageSize: number): Observable<SearchLogPage> => {
-    if (this.shouldFail) {
-      return throwError(() => new Error('Database unavailable'));
-    }
+  readonly getPage = vi.fn(
+    (page: number, pageSize: number, query = ''): Observable<SearchLogPage> => {
+      if (this.shouldFail) {
+        return throwError(() => new Error('Database unavailable'));
+      }
 
-    return of({
-      items: [
-        {
-          searchLogId: 12,
-          userInput: 'Lloyds',
-          searchedAt: '2026-09-29T10:30:00+00:00',
-          resultCount: 100,
-          httpStatus: 200,
-        },
-      ],
-      totalResults: 1,
-      page,
-      pageSize,
-    }).pipe(delay(10));
-  });
+      return of({
+        items: [
+          {
+            searchLogId: 12,
+            userInput: 'Lloyds',
+            companyName: 'LLOYDS BANK PLC',
+            searchedAt: '2026-09-29T10:30:00+00:00',
+            resultCount: 100,
+            httpStatus: 200,
+          },
+        ],
+        totalResults: 1,
+        page,
+        pageSize,
+        query,
+      }).pipe(delay(10));
+    },
+  );
 }
 
 describe('SearchLogs', () => {
@@ -52,8 +56,9 @@ describe('SearchLogs', () => {
     fixture.detectChanges();
 
     const text = fixture.nativeElement.textContent as string;
-    expect(service.getPage).toHaveBeenCalledWith(1, 20);
+    expect(service.getPage).toHaveBeenCalledWith(1, 20, '');
     expect(text).toContain('Lloyds');
+    expect(text).toContain('LLOYDS BANK PLC');
     expect(text).toContain('Search input');
     expect(text).toContain('100');
     expect(text).toContain('Successful');

@@ -109,10 +109,10 @@ The backend maps accounts, confirmation statements, company flags, previous name
 ### Frontend request
 
 ```http
-GET /search_logs?page=1&pageSize=20
+GET /search_logs?page=1&pageSize=20&query=Lloyds
 ```
 
-This route reads search activity from `database.db`, ordered newest first. `page` must be at least 1 and `pageSize` must be between 1 and 100. Both values default to 1 and 20 respectively.
+This route reads search activity from `database.db`, ordered newest first. `page` must be at least 1 and `pageSize` must be between 1 and 100. Both values default to 1 and 20 respectively. The optional `query` parameter filters case-insensitively by recorded input, linked company name, or company number and is limited to 100 characters.
 
 ### Successful response
 
@@ -122,6 +122,7 @@ This route reads search activity from `database.db`, ordered newest first. `page
     {
       "searchLogId": 42,
       "userInput": "Lloyds",
+      "companyName": "LLOYDS BANK PLC",
       "searchedAt": "2026-09-29T10:30:00+00:00",
       "resultCount": 100,
       "httpStatus": 200
@@ -129,11 +130,12 @@ This route reads search activity from `database.db`, ordered newest first. `page
   ],
   "totalResults": 1,
   "page": 1,
-  "pageSize": 20
+  "pageSize": 20,
+  "query": "Lloyds"
 }
 ```
 
-The response deliberately excludes `ApiResponse`; the activity screen needs operational metadata, not the potentially large raw Companies House payload.
+`companyName` is null when a log has zero or multiple linked companies. The response deliberately excludes `ApiResponse`; the activity screen needs operational metadata, not the potentially large raw Companies House payload.
 
 ## Error responses
 

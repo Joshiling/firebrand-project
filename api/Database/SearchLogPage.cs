@@ -4,6 +4,7 @@ namespace Api.Database;
 public sealed record SearchLogEntry(
     long SearchLogId,
     string UserInput,
+    string? CompanyName,
     DateTimeOffset SearchedAt,
     int ResultCount,
     int HttpStatus);
@@ -13,4 +14,5 @@ public sealed record SearchLogPage(
     IReadOnlyList<SearchLogEntry> Items,
     int TotalResults,
     int Page,
-    int PageSize);
+    int PageSize,
+    string? Query);

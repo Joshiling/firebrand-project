@@ -182,8 +182,9 @@ public sealed class CompaniesHouseSearchServiceTests
         public Task<SearchLogPage> GetSearchLogsAsync(
             int page,
             int pageSize,
+            string? query = null,
             CancellationToken cancellationToken = default) =>
-            Task.FromResult(new SearchLogPage([], 0, page, pageSize));
+            Task.FromResult(new SearchLogPage([], 0, page, pageSize, query));
 
         public Task<long> SaveSearchLogAsync(
             string userInput,

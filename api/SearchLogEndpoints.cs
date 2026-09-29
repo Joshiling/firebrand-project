@@ -19,19 +19,20 @@ public static class SearchLogEndpoints
         ICompanyDatabaseService databaseService,
         CancellationToken cancellationToken,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20)
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? query = null)
     {
-        if (page < 1 || pageSize is < 1 or > 100)
+        if (page < 1 || pageSize is < 1 or > 100 || query?.Trim().Length > 100)
         {
             return TypedResults.BadRequest(new ProblemDetails
             {
                 Title = "Invalid request",
-                Detail = "Page must be at least 1 and pageSize must be between 1 and 100.",
+                Detail = "Page must be at least 1, pageSize must be between 1 and 100, and query must not exceed 100 characters.",
                 Status = StatusCodes.Status400BadRequest
             });
         }
 
-        var result = await databaseService.GetSearchLogsAsync(page, pageSize, cancellationToken);
+        var result = await databaseService.GetSearchLogsAsync(page, pageSize, query, cancellationToken);
         return TypedResults.Ok(result);
     }
 }
