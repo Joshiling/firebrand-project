@@ -15,6 +15,9 @@ public class CompanyProfileDto
     [JsonPropertyName("company_status")]
     public string? CompanyStatus { get; set; }
 
+    [JsonPropertyName("type")]
+    public string? CompanyType { get; set; }
+
     [JsonPropertyName("date_of_creation")]
     public DateOnly? DateOfCreation { get; set; }
 
