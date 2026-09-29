@@ -9,7 +9,7 @@ public sealed class CompaniesHouseSearchService(
     IHttpClientFactory httpClientFactory,
     IConfiguration configuration) : ICompanySearchService
 {
-    private const int ItemsPerPage = 10;
+    private const int ItemsPerPage = 100;
     private const string HttpClientName = "CompaniesHouse";
 
     private readonly ConcurrentDictionary<string, Company> _companies = new(StringComparer.OrdinalIgnoreCase);
