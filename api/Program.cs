@@ -1,3 +1,4 @@
+using Api.Database;
 using Api.Endpoints;
 using Api.Services;
 
