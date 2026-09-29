@@ -2,6 +2,8 @@
 
 This guide describes the SQLite database used by the CompanyLens backend. The schema is created and upgraded by `CompanyDatabaseService.EnsureSchemaAsync`; developers do not need to run a separate migration command.
 
+For a beginner-friendly introduction with examples, read [Database Tables Explained](docs/database-tables-explained.md).
+
 ## Schema
 
 ![CompanyLens database schema](images/database-schema.png)
