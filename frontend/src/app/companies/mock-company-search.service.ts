@@ -48,11 +48,22 @@ export class MockCompanySearchService extends CompanySearchService {
         : MOCK_COMPANY_PROFILES.filter((company) =>
             company.company_name.toLocaleLowerCase().includes(query),
           );
-    const matches: readonly CompanySummary[] = matchingProfiles.map(mapCompaniesHouseProfile);
+    // The mock advertises only simple enum names whose wire values differ by case.
+    // Missing profile fields cannot satisfy an explicit filter; never infer a country.
+    const filteredProfiles = matchingProfiles.filter((company) =>
+      (!request.companyStatuses?.length || request.companyStatuses.some(
+        (status) => status.toLowerCase() === company.company_status?.toLowerCase(),
+      )) &&
+      (!request.companyTypes?.length || request.companyTypes.some(
+        (type) => type.toLowerCase() === company.type?.toLowerCase(),
+      )) &&
+      (!request.country || request.country.toLowerCase() ===
+        company.registered_office_address?.country?.toLowerCase()),
+    );
+    const matches: readonly CompanySummary[] = filteredProfiles.map(mapCompaniesHouseProfile);
     const startIndex = (page - 1) * pageSize;
 
-    // Pagination is local for the mock. A future HTTP service can keep this public contract while
-    // delegating pagination to the backend if the backend adds page parameters.
+    // Match the HTTP adapter: totals describe all matches, not just the requested slice.
     return of({
       items: matches.slice(startIndex, startIndex + pageSize),
       totalResults: matches.length,

@@ -306,6 +306,60 @@ describe('CompanySearch', () => {
     });
   });
 
+  it('keeps newly restored selections visible under an existing option search', async () => {
+    const input = fixture.nativeElement.querySelector('input[aria-label="Find company status"]') as HTMLInputElement;
+    input.value = 'no match';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(picker('status').querySelectorAll('.filter-picker__list button')).toHaveLength(1);
+
+    await TestBed.inject(Router).navigate([], { queryParams: { q: 'Tesco', status: 'Active' } });
+    fixture.detectChanges();
+
+    expect(Array.from(picker('status').querySelectorAll('.filter-picker__list button'),
+      (button) => button.textContent?.trim())).toEqual(['Any company status', 'Active']);
+  });
+
+  it('removing the final selection restores Any independently for each picker', () => {
+    setQuery('Tesco');
+    choose('status', 'Active');
+    choose('type', 'Ltd');
+    choose('status', 'Active');
+    submit();
+    expect(service.search).toHaveBeenLastCalledWith({ query: 'Tesco', page: 1, pageSize: 10, companyTypes: ['Ltd'] });
+    choose('type', 'Ltd');
+    submit();
+    expect(service.search).toHaveBeenLastCalledWith({ query: 'Tesco', page: 1, pageSize: 10 });
+  });
+
+  it('restores only the latest filtered URL when metadata arrives', async () => {
+    const options = new Subject<CompanyFilterOptions>();
+    service.optionsResponse = options;
+    fixture.destroy();
+    fixture = TestBed.createComponent(CompanySearch);
+    fixture.detectChanges();
+    const router = TestBed.inject(Router);
+    await router.navigate([], { queryParams: { q: 'Old', status: 'Active' } });
+    await router.navigate([], { queryParams: { q: 'Latest', type: 'Plc' } });
+    expect(service.search).not.toHaveBeenCalled();
+    options.next(service.options);
+    expect(service.search).toHaveBeenCalledExactlyOnceWith({ query: 'Latest', page: 1, pageSize: 10, companyTypes: ['Plc'] });
+  });
+
+  it('does not resurrect a filtered deep link after a new unfiltered submission', async () => {
+    const options = new Subject<CompanyFilterOptions>();
+    service.optionsResponse = options;
+    fixture.destroy();
+    fixture = TestBed.createComponent(CompanySearch);
+    fixture.detectChanges();
+    await TestBed.inject(Router).navigate([], { queryParams: { q: 'Old', status: 'Active' } });
+    setQuery('Latest');
+    submit();
+    await finishRequest();
+    options.next(service.options);
+    expect(service.search).toHaveBeenCalledExactlyOnceWith({ query: 'Latest', page: 1, pageSize: 10 });
+  });
+
   it('closes a picker when clicking elsewhere or pressing Escape', () => {
     const status = picker('status');
     status.open = true;

@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, ElementRef, HostListener, inject, signal, viewChild } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   ReactiveFormsModule,
@@ -59,11 +59,19 @@ export class CompanySearch {
     companyTypes: new FormControl<string[]>([''], { nonNullable: true }),
     country: new FormControl('', { nonNullable: true }),
   });
+  // URL restoration changes form values without changing the option-search text.
+  // Track selections reactively so selected options remain visible in a filtered list.
+  private readonly selectedStatuses = toSignal(this.searchForm.controls.companyStatuses.valueChanges, {
+    initialValue: this.searchForm.controls.companyStatuses.value,
+  });
+  private readonly selectedTypes = toSignal(this.searchForm.controls.companyTypes.valueChanges, {
+    initialValue: this.searchForm.controls.companyTypes.value,
+  });
   protected readonly visibleStatuses = computed(() => this.matchingOptions(
-    this.filterOptions()?.companyStatuses ?? [], this.statusFilter(), this.searchForm.controls.companyStatuses.value,
+    this.filterOptions()?.companyStatuses ?? [], this.statusFilter(), this.selectedStatuses(),
   ));
   protected readonly visibleTypes = computed(() => this.matchingOptions(
-    this.filterOptions()?.companyTypes ?? [], this.typeFilter(), this.searchForm.controls.companyTypes.value,
+    this.filterOptions()?.companyTypes ?? [], this.typeFilter(), this.selectedTypes(),
   ));
   protected readonly result = signal<CompanySearchPage | null>(null);
   protected readonly loading = signal(false);
