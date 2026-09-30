@@ -25,6 +25,12 @@ describe('MockCompanySearchService', () => {
     return resultPromise;
   }
 
+  async function completeHistory(registrationNumber: string) {
+    const resultPromise = firstValueFrom(service.getHistory(registrationNumber));
+    await vi.advanceTimersByTimeAsync(200);
+    return resultPromise;
+  }
+
   it('returns the full supplied profile without losing leading zeros', async () => {
     const result = await completeDetails('00002065');
 
@@ -32,6 +38,19 @@ describe('MockCompanySearchService', () => {
     expect(result?.accounts?.last_accounts?.type).toBe('group');
     expect(result?.previous_company_names).toHaveLength(5);
     expect(result?.sic_codes).toEqual(['64191']);
+    expect(result?.version_count).toBe(3);
+  });
+
+  it('returns newest-first Lloyds version history with changed names and addresses', async () => {
+    const result = await completeHistory('00002065');
+
+    expect(result.map((entry) => entry.versionNumber)).toEqual([3, 2, 1]);
+    expect(result[0].address).toBe('25 Gresham Street, London, EC2V 7HN');
+    expect(result[2].companyName).toBe('LLOYDS BANK LIMITED');
+  });
+
+  it('returns no mock history for a company without recorded versions', async () => {
+    await expect(completeHistory('00445790')).resolves.toEqual([]);
   });
 
   it('returns sparse and prefixed profiles without inventing detail data', async () => {

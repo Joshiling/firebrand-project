@@ -6,6 +6,7 @@ import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideArrowLeft,
   lucideBuilding2,
+  lucideChevronDown,
   lucideCircleAlert,
   lucideFileClock,
   lucideHistory,
@@ -17,14 +18,18 @@ import {
 } from '@ng-icons/lucide';
 import { catchError, map, of, Subject, switchMap } from 'rxjs';
 import { CompaniesHouseCompanyProfile } from '../companies-house-profile';
+import { CompanyHistoryEntry } from '../company.model';
 import { CompanySearchService } from '../company-search.service';
+import { CompanyVersionHistory } from '../company-version-history/company-version-history';
 
 type DetailOutcome =
   { kind: 'success'; profile: CompaniesHouseCompanyProfile | null } | { kind: 'error' };
+type HistoryOutcome =
+  { kind: 'success'; entries: readonly CompanyHistoryEntry[] } | { kind: 'error' };
 
 @Component({
   selector: 'app-company-details',
-  imports: [RouterLink, NgIcon],
+  imports: [RouterLink, NgIcon, CompanyVersionHistory],
   templateUrl: './company-details.html',
   styleUrl: './company-details.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -32,6 +37,7 @@ type DetailOutcome =
     provideIcons({
       lucideArrowLeft,
       lucideBuilding2,
+      lucideChevronDown,
       lucideCircleAlert,
       lucideFileClock,
       lucideHistory,
@@ -48,12 +54,18 @@ export class CompanyDetails {
   private readonly searchService = inject(CompanySearchService);
   private readonly title = inject(Title);
   private readonly requests = new Subject<string>();
+  private readonly historyRequests = new Subject<string>();
   private currentRegistrationNumber = '';
+  private historyLoaded = false;
 
   protected readonly profile = signal<CompaniesHouseCompanyProfile | null>(null);
   protected readonly loading = signal(true);
   protected readonly notFound = signal(false);
   protected readonly requestFailed = signal(false);
+  protected readonly historyExpanded = signal(false);
+  protected readonly historyEntries = signal<readonly CompanyHistoryEntry[]>([]);
+  protected readonly loadingHistory = signal(false);
+  protected readonly historyFailed = signal(false);
   protected readonly backQueryParams: Params;
 
   constructor() {
@@ -91,6 +103,28 @@ export class CompanyDetails {
         );
       });
 
+    this.historyRequests
+      .pipe(
+        switchMap((registrationNumber) =>
+          this.searchService.getHistory(registrationNumber).pipe(
+            map((entries): HistoryOutcome => ({ kind: 'success', entries })),
+            catchError(() => of<HistoryOutcome>({ kind: 'error' })),
+          ),
+        ),
+        takeUntilDestroyed(),
+      )
+      .subscribe((outcome) => {
+        this.loadingHistory.set(false);
+
+        if (outcome.kind === 'error') {
+          this.historyFailed.set(true);
+          return;
+        }
+
+        this.historyLoaded = true;
+        this.historyEntries.set(outcome.entries);
+      });
+
     this.route.paramMap
       .pipe(
         map((params) => params.get('registrationNumber')?.trim() ?? ''),
@@ -101,6 +135,19 @@ export class CompanyDetails {
 
   protected retry(): void {
     this.requestDetails(this.currentRegistrationNumber);
+  }
+
+  protected toggleHistory(): void {
+    const expanded = !this.historyExpanded();
+    this.historyExpanded.set(expanded);
+
+    if (expanded && !this.historyLoaded && !this.loadingHistory()) {
+      this.requestHistory();
+    }
+  }
+
+  protected retryHistory(): void {
+    this.requestHistory();
   }
 
   protected formatAddress(profile: CompaniesHouseCompanyProfile): string {
@@ -191,6 +238,17 @@ export class CompanyDetails {
     this.notFound.set(false);
     this.requestFailed.set(false);
     this.profile.set(null);
+    this.historyExpanded.set(false);
+    this.historyEntries.set([]);
+    this.loadingHistory.set(false);
+    this.historyFailed.set(false);
+    this.historyLoaded = false;
     this.requests.next(registrationNumber);
+  }
+
+  private requestHistory(): void {
+    this.loadingHistory.set(true);
+    this.historyFailed.set(false);
+    this.historyRequests.next(this.currentRegistrationNumber);
   }
 }

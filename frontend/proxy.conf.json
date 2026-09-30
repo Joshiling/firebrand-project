@@ -13,5 +13,10 @@
     "target": "https://localhost:7097",
     "secure": false,
     "changeOrigin": true
+  },
+  "/search_logs": {
+    "target": "https://localhost:7097",
+    "secure": false,
+    "changeOrigin": true
   }
 }

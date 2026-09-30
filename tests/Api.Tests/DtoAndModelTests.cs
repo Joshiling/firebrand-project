@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Api.DTOs.CompaniesHouse;
+using Api.Database;
 using Api.Models;
 
 namespace Api.Tests;
@@ -147,5 +148,32 @@ public sealed class DtoAndModelTests
       {
         Assert.False(Enum.IsDefined((CompanyStatusFilter)int.MaxValue));
         Assert.False(Enum.IsDefined((CompanyTypeFilter)int.MaxValue));
+        }
+
+        [Fact]
+      public void VersionHistoryModels_SerializeUsingContractFieldNames()
+      {
+        var company = new Company
+        {
+          Name = "LLOYDS BANK PLC",
+          RegistryId = "00002065",
+          VersionCount = 2
+        };
+        var history = new CompanyHistoryRecord
+        {
+          VersionNumber = 2,
+          RecordedAt = "2026-09-29T10:30:00Z",
+          CompanyNumber = "00002065",
+          CompanyName = "LLOYDS BANK PLC"
+        };
+
+        var companyJson = JsonSerializer.Serialize(company);
+        var historyJson = JsonSerializer.Serialize(history);
+
+        Assert.Contains("\"version_count\":2", companyJson);
+        Assert.Contains("\"version_number\":2", historyJson);
+        Assert.Contains("\"recorded_at\":", historyJson);
+        Assert.Contains("\"company_number\":", historyJson);
+        Assert.Contains("\"company_name\":", historyJson);
       }
 }

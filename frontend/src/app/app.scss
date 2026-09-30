@@ -35,6 +35,47 @@ footer {
   outline-offset: var(--focus-offset);
 }
 
+.header-actions,
+.header-actions nav {
+  display: flex;
+  align-items: center;
+}
+
+.header-actions {
+  gap: 1rem;
+}
+
+.header-actions nav {
+  align-self: stretch;
+  gap: 0.25rem;
+}
+
+.header-actions nav a {
+  min-height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  padding-inline: 0.75rem;
+  color: var(--color-muted);
+  border-bottom: 2px solid transparent;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.header-actions nav a:hover {
+  color: var(--color-action-hover);
+}
+
+.header-actions nav a.active {
+  color: var(--color-action);
+  border-bottom-color: var(--color-action);
+}
+
+.header-actions nav a:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
 .brand__mark {
   width: 2rem;
   height: 2rem;
@@ -74,5 +115,16 @@ footer p {
 @media (max-width: 40rem) {
   main {
     padding-block: 2rem 3rem;
+  }
+
+  .site-header__inner {
+    align-items: flex-start;
+    flex-direction: column;
+    padding-block: 0.75rem;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
   }
 }

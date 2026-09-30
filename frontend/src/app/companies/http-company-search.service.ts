@@ -2,7 +2,13 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { inject, Injectable } from '@angular/core';
 import { catchError, map, Observable, of, throwError } from 'rxjs';
 import { CompaniesHouseCompanyProfile } from './companies-house-profile';
-import { CompanyFilterOptions, CompanySearchPage, CompanySearchRequest, CompanySummary } from './company.model';
+import {
+  CompanyFilterOptions,
+  CompanyHistoryEntry,
+  CompanySearchPage,
+  CompanySearchRequest,
+  CompanySummary,
+} from './company.model';
 import { classifyCompanyQuery } from './company-query';
 import { CompanySearchService } from './company-search.service';
 
@@ -24,6 +30,7 @@ interface BackendRegisteredOfficeAddress {
 }
 
 interface BackendCompany extends BackendCompanySearch {
+  version_count?: number;
   accounts?: {
     accountingReferenceDate?: { day?: string; month?: string };
     lastAccounts?: {
@@ -66,6 +73,17 @@ interface BackendCompany extends BackendCompanySearch {
   registeredOfficeIsInDispute?: boolean;
   sicCodes?: readonly string[];
   undeliverableRegisteredOfficeAddress?: boolean;
+}
+
+interface BackendCompanyHistoryEntry {
+  version_number: number;
+  recorded_at: string;
+  company_number: string;
+  company_name: string;
+  company_status?: string;
+  incorporation_date?: string;
+  address?: string;
+  external_registration_number?: string;
 }
 
 @Injectable()
@@ -124,6 +142,34 @@ export class HttpCompanySearchService extends CompanySearchService {
         return throwError(() => error);
       }),
     );
+  }
+
+  override getHistory(registrationNumber: string): Observable<readonly CompanyHistoryEntry[]> {
+    const encodedNumber = encodeURIComponent(registrationNumber.trim());
+
+    return this.http
+      .get<readonly BackendCompanyHistoryEntry[]>(`/registry_id/${encodedNumber}/history`)
+      .pipe(
+        map((entries) =>
+          entries.map((entry) => ({
+            versionNumber: entry.version_number,
+            recordedAt: entry.recorded_at,
+            companyNumber: entry.company_number,
+            companyName: entry.company_name,
+            companyStatus: entry.company_status,
+            incorporationDate: entry.incorporation_date,
+            address: entry.address,
+            externalRegistrationNumber: entry.external_registration_number,
+          })),
+        ),
+        catchError((error: unknown) => {
+          if (error instanceof HttpErrorResponse && error.status === 404) {
+            return of([]);
+          }
+
+          return throwError(() => error);
+        }),
+      );
   }
 
   private toSummary(company: BackendCompanySearch): CompanySummary {
@@ -208,6 +254,7 @@ export class HttpCompanySearchService extends CompanySearchService {
       registered_office_is_in_dispute: company.registeredOfficeIsInDispute,
       sic_codes: company.sicCodes,
       undeliverable_registered_office_address: company.undeliverableRegisteredOfficeAddress,
+      version_count: company.version_count,
     };
   }
 }

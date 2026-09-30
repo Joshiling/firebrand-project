@@ -1,0 +1,240 @@
+:host {
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.version-history {
+  padding: 1.25rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-action);
+  border-radius: 0.5rem;
+}
+
+.version-history__heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.eyebrow {
+  margin: 0 0 0.375rem;
+  color: var(--color-action);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h2 {
+  margin-bottom: 0;
+  color: var(--color-text);
+  font-size: 1.125rem;
+}
+
+.version-history__heading p:last-child {
+  max-width: 28rem;
+  margin-bottom: 0;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+.history-state {
+  min-height: 7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.history-state p {
+  margin-bottom: 0;
+}
+
+.history-state--error {
+  color: #7a271a;
+}
+
+.history-state--error div {
+  text-align: left;
+}
+
+button {
+  min-height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  color: #ffffff;
+  background: var(--color-action);
+  border: 1px solid var(--color-action);
+  border-radius: 0.5rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.spinner {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid var(--color-action);
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.version-timeline {
+  padding: 1.25rem 0 0;
+  margin: 0;
+  list-style: none;
+}
+
+.version-timeline li {
+  position: relative;
+  padding-left: 2rem;
+}
+
+.version-timeline li:not(:last-child) {
+  padding-bottom: 1rem;
+}
+
+.version-timeline li:not(:last-child)::before {
+  position: absolute;
+  top: 0.75rem;
+  bottom: -0.75rem;
+  left: 0.4375rem;
+  width: 2px;
+  background: var(--color-border);
+  content: '';
+}
+
+.version-marker {
+  position: absolute;
+  top: 1.25rem;
+  left: 0;
+  width: 1rem;
+  height: 1rem;
+  background: var(--color-surface);
+  border: 3px solid var(--color-action);
+  border-radius: 50%;
+}
+
+.version-timeline article {
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+}
+
+.version-timeline__item--current article {
+  background: #f7fbf9;
+  border-color: #a9d8bf;
+}
+
+.version-header,
+.version-header > div {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.version-header {
+  justify-content: space-between;
+}
+
+.version-header h3 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.version-header time {
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.current-version,
+.change-list span {
+  padding: 0.1875rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.current-version {
+  color: #17633d;
+  background: #e8f7ef;
+}
+
+.change-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.75rem;
+}
+
+.change-list span {
+  color: #604b0d;
+  background: #fff4cf;
+}
+
+.version-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1.5rem;
+  padding-top: 0.875rem;
+  margin: 0.875rem 0 0;
+  border-top: 1px solid var(--color-border);
+}
+
+dt {
+  margin-bottom: 0.1875rem;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+dd {
+  margin: 0;
+  color: var(--color-text);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 42rem) {
+  .version-history__heading,
+  .version-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .version-fields {
+    grid-template-columns: 1fr;
+  }
+}

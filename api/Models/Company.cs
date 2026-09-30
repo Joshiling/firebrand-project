@@ -1,4 +1,5 @@
 using Api.DTOs.CompaniesHouse;
+using System.Text.Json.Serialization;
 
 namespace Api.Models;
 
@@ -48,4 +49,7 @@ public sealed record Company
     public IReadOnlyList<string>? SicCodes { get; init; }
 
     public bool? UndeliverableRegisteredOfficeAddress { get; init; }
+
+    [JsonPropertyName("version_count")]
+    public int VersionCount { get; init; }
 }

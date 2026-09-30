@@ -3,14 +3,21 @@ import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { Observable, of, throwError } from 'rxjs';
 import { CompaniesHouseCompanyProfile } from '../companies-house-profile';
-import { CompanyFilterOptions, CompanySearchPage, CompanySearchRequest } from '../company.model';
+import {
+  CompanyFilterOptions,
+  CompanyHistoryEntry,
+  CompanySearchPage,
+  CompanySearchRequest,
+} from '../company.model';
 import { CompanySearchService } from '../company-search.service';
-import { MOCK_COMPANY_PROFILES } from '../mock-companies';
+import { MOCK_COMPANY_HISTORY, MOCK_COMPANY_PROFILES } from '../mock-companies';
 import { CompanyDetails } from './company-details';
 
 class DetailsServiceStub extends CompanySearchService {
   profile: CompaniesHouseCompanyProfile | null = MOCK_COMPANY_PROFILES[0];
   shouldFail = false;
+  shouldFailHistory = false;
+  history: readonly CompanyHistoryEntry[] = [];
 
   override getFilterOptions(): Observable<CompanyFilterOptions> {
     return of({ companyStatuses: [], companyTypes: [], countries: [] });
@@ -29,6 +36,14 @@ class DetailsServiceStub extends CompanySearchService {
   override search(_request: CompanySearchRequest): Observable<CompanySearchPage> {
     return of({ items: [], totalResults: 0, page: 1, pageSize: 10 });
   }
+
+  override readonly getHistory = vi.fn((): Observable<readonly CompanyHistoryEntry[]> => {
+    if (this.shouldFailHistory) {
+      return throwError(() => new Error('History unavailable'));
+    }
+
+    return of(this.history);
+  });
 }
 
 describe('CompanyDetails', () => {
@@ -74,6 +89,57 @@ describe('CompanyDetails', () => {
     expect(element.textContent).toContain('BEACON COMMUNITY INTEREST COMPANY');
     expect(element.textContent).toContain('Accounts information is not available.');
     expect(element.textContent).toContain('No previous company names are available.');
+    expect(element.querySelector('.history-toggle')).toBeNull();
+  });
+
+  it('loads Lloyds history on demand and identifies fields changed in each version', async () => {
+    service.history = MOCK_COMPANY_HISTORY['00002065'];
+    const element = await navigate('/companies/00002065');
+    const toggle = element.querySelector('.history-toggle') as HTMLButtonElement;
+
+    expect(toggle).not.toBeNull();
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(service.getHistory).not.toHaveBeenCalled();
+
+    toggle.click();
+    harness.detectChanges();
+
+    expect(service.getHistory).toHaveBeenCalledWith('00002065');
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(element.textContent).toContain('Version 3');
+    expect(element.textContent).toContain('Current');
+    expect(element.textContent).toContain('25 Gresham Street, London, EC2V 7HN');
+    expect(element.textContent).toContain('71 Lombard Street, London, EC3P 3BS');
+    expect(element.textContent).toContain('LLOYDS BANK LIMITED');
+    expect(element.textContent).toContain('Address');
+    expect(element.textContent).toContain('Company name');
+
+    toggle.click();
+    harness.detectChanges();
+    toggle.click();
+    harness.detectChanges();
+
+    expect(service.getHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a history error independently and retries without reloading the profile', async () => {
+    service.shouldFailHistory = true;
+    const element = await navigate('/companies/00002065');
+
+    (element.querySelector('.history-toggle') as HTMLButtonElement).click();
+    harness.detectChanges();
+
+    expect(element.textContent).toContain('Version history could not be loaded');
+    expect(service.getDetails).toHaveBeenCalledTimes(1);
+
+    service.shouldFailHistory = false;
+    service.history = MOCK_COMPANY_HISTORY['00002065'];
+    (element.querySelector('.history-retry') as HTMLButtonElement).click();
+    harness.detectChanges();
+
+    expect(service.getHistory).toHaveBeenCalledTimes(2);
+    expect(element.textContent).toContain('Version 3');
+    expect(service.getDetails).toHaveBeenCalledTimes(1);
   });
 
   it('describes missing previous-name dates naturally', async () => {

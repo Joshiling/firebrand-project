@@ -6,7 +6,15 @@
       </span>
       <span>CompanyLens</span>
     </a>
-    <span class="environment">Live API</span>
+    <div class="header-actions">
+      <nav aria-label="Primary navigation">
+        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"
+          >Search</a
+        >
+        <a routerLink="/logs" routerLinkActive="active">Activity log</a>
+      </nav>
+      <span class="environment">Live API</span>
+    </div>
   </div>
 </header>
 

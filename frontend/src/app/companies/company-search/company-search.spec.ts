@@ -35,6 +35,10 @@ class SearchServiceStub extends CompanySearchService {
     return of(null);
   }
 
+  override getHistory() {
+    return of([]);
+  }
+
   override readonly search = vi.fn(
     (request: CompanySearchRequest): Observable<CompanySearchPage> => {
       if (this.shouldFail) {
