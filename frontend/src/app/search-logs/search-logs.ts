@@ -60,6 +60,7 @@ export class SearchLogs {
   protected readonly requestFailed = signal(false);
 
   constructor() {
+    // A newer URL or retry cancels the previous read without terminating future retries on error.
     this.requests
       .pipe(
         switchMap((request) =>
@@ -113,6 +114,7 @@ export class SearchLogs {
 
   protected changePage(page: number): void {
     if (!this.loading()) {
+      // Paging belongs to the displayed result set, not an unsubmitted edit in the form.
       this.updateUrl(page, this.submittedQuery());
     }
   }
@@ -122,7 +124,8 @@ export class SearchLogs {
   }
 
   protected formatTimestamp(timestamp: string): string {
-    return this.dateFormatter.format(new Date(timestamp));
+    const date = new Date(timestamp);
+    return Number.isNaN(date.getTime()) ? 'Not available' : this.dateFormatter.format(date);
   }
 
   protected statusLabel(status: number): string {

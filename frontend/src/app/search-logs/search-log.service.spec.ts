@@ -54,4 +54,21 @@ describe('SearchLogService', () => {
 
     await expect(resultPromise).resolves.toMatchObject({ query: 'Lloyds Bank' });
   });
+
+  it('encodes literal punctuation and cancels on unsubscription', () => {
+    const query = 'A & B + 100%_';
+    const subscription = service.getPage(1, 20, query).subscribe();
+    const request = http.expectOne((candidate) => candidate.url === '/search_logs');
+    const url = new URL(request.request.urlWithParams, 'http://localhost');
+    expect([...url.searchParams.entries()]).toEqual([['page', '1'], ['pageSize', '20'], ['query', query]]);
+    subscription.unsubscribe();
+    expect(request.cancelled).toBe(true);
+  });
+
+  it('propagates service failures instead of displaying an empty log', async () => {
+    const result = firstValueFrom(service.getPage(1, 20));
+    const rejected = expect(result).rejects.toMatchObject({ status: 503 });
+    http.expectOne('/search_logs?page=1&pageSize=20').flush(null, { status: 503, statusText: 'Unavailable' });
+    await rejected;
+  });
 });
