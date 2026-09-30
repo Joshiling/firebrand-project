@@ -19,6 +19,12 @@ public sealed record CompanySearchFilters
         || Country.HasValue;
 }
 
+/// <summary>Filter values accepted by the company search endpoints.</summary>
+public sealed record CompanyFilterOptionsResponse(
+    IReadOnlyList<string> CompanyStatuses,
+    IReadOnlyList<string> CompanyTypes,
+    IReadOnlyList<string> Countries);
+
 /// <summary>Companies House company status values available as search filters.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum CompanyStatusFilter

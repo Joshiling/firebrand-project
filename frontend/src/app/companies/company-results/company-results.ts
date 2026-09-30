@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Params, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideArrowUpRight } from '@ng-icons/lucide';
 import { CompanySummary } from '../company.model';
@@ -14,8 +14,7 @@ import { CompanySummary } from '../company.model';
 })
 export class CompanyResults {
   readonly companies = input.required<readonly CompanySummary[]>();
-  readonly searchQuery = input('');
-  readonly searchPage = input(1);
+  readonly searchParams = input<Params>({});
 
   protected formatAddress(company: CompanySummary): string {
     const address = company.registeredAddress;

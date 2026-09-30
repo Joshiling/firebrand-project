@@ -1,13 +1,17 @@
 import { Injectable } from '@angular/core';
 import { Observable, delay, of } from 'rxjs';
 import { CompaniesHouseCompanyProfile, mapCompaniesHouseProfile } from './companies-house-profile';
-import { CompanySearchPage, CompanySearchRequest, CompanySummary } from './company.model';
+import { CompanyFilterOptions, CompanySearchPage, CompanySearchRequest, CompanySummary } from './company.model';
 import { classifyCompanyQuery } from './company-query';
 import { CompanySearchService } from './company-search.service';
 import { MOCK_COMPANY_PROFILES } from './mock-companies';
 
 @Injectable()
 export class MockCompanySearchService extends CompanySearchService {
+  override getFilterOptions(): Observable<CompanyFilterOptions> {
+    return of({ companyStatuses: ['Active', 'Dissolved'], companyTypes: ['Ltd', 'Plc'], countries: ['England'] });
+  }
+
   override getDetails(registrationNumber: string): Observable<CompaniesHouseCompanyProfile | null> {
     const normalizedNumber = registrationNumber.trim().toLocaleLowerCase();
     const profile =
