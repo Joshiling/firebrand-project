@@ -4,7 +4,7 @@ This contract describes the confirmed C# routes required by the Angular company-
 
 ## Base URL
 
-The local backend origin is still to be agreed. The confirmed relative routes below work with either Angular proxy configuration or an agreed backend origin.
+The development proxy targets `https://localhost:7097`. Angular uses the relative routes below so backend credentials and origin configuration stay outside components.
 
 All successful responses use `Content-Type: application/json`.
 
@@ -34,20 +34,16 @@ Supported `country` enum values are `Wales`, `England`, `Scotland`, `GreatBritai
 
 ### Successful response
 
-Return `200 OK` with a JSON list of matching `Company` results. An exact registration number will normally produce zero or one item.
+Return `200 OK` with a JSON list of compact search results. An exact registration number will normally produce zero or one item.
 
 ```json
 [
   {
-    "company_name": "LLOYDS BANK PLC",
-    "company_number": "00002065",
-    "company_status": "active",
-    "type": "plc",
-    "registered_office_address": {
-      "address_line_1": "25 Gresham Street",
-      "locality": "London",
-      "postal_code": "EC2V 7HN"
-    }
+    "name": "LLOYDS BANK PLC",
+    "registryId": "00002065",
+    "companyStatus": "active",
+    "companyType": "plc",
+    "address": "25 Gresham Street, London, EC2V 7HN"
   }
 ]
 ```
@@ -72,20 +68,16 @@ GET /name?name=Lloyds&company_status=Active&company_type=Plc&city=London&country
 
 ### Successful response
 
-Return `200 OK` with a JSON list of matching `Company` results using the same item shape as the registration-number search.
+Return `200 OK` with a JSON list of compact search results using the same item shape as the registration-number search.
 
 ```json
 [
   {
-    "company_name": "LLOYDS BANK PLC",
-    "company_number": "00002065",
-    "company_status": "active",
-    "type": "plc",
-    "registered_office_address": {
-      "address_line_1": "25 Gresham Street",
-      "locality": "London",
-      "postal_code": "EC2V 7HN"
-    }
+    "name": "LLOYDS BANK PLC",
+    "registryId": "00002065",
+    "companyStatus": "active",
+    "companyType": "plc",
+    "address": "25 Gresham Street, London, EC2V 7HN"
   }
 ]
 ```
@@ -104,21 +96,26 @@ This route retrieves the full profile displayed by the CompanyLens details page 
 
 ### Successful response
 
-Return `200 OK` with one full company profile. The supplied Lloyds response is the representative shape:
+Return `200 OK` with one full company profile. This abbreviated example shows the naming contract:
 
 ```json
 {
-  "company_name": "LLOYDS BANK PLC",
-  "company_number": "00002065",
-  "company_status": "active",
-  "registered_office_address": {
+  "name": "LLOYDS BANK PLC",
+  "registryId": "00002065",
+  "companyStatus": "active",
+  "registeredOfficeAddress": {
     "address_line_1": "25 Gresham Street",
     "locality": "London",
     "postal_code": "EC2V 7HN"
   },
-  "type": "plc"
+  "companyType": "plc",
+  "accounts": { "next_due": "2027-06-30", "overdue": false },
+  "confirmationStatement": { "next_due": "2027-05-20", "overdue": false },
+  "previousCompanyNames": [{ "name": "LLOYDS TSB BANK PLC", "ceased_on": "2013-09-23" }]
 }
 ```
+
+Top-level model fields use camelCase. Nested accounts, confirmation statements, registered addresses, and previous names reuse upstream DTOs and retain their explicit snake_case JSON property names. The frontend adapter must preserve this distinction; a global casing assumption loses dates and address fields. Nullable booleans distinguish an explicit `false` from missing data.
 
 The backend maps accounts, confirmation statements, company flags, previous names, SIC codes, registered address, links, and other profile metadata. Missing optional Companies House fields remain nullable so the details page can show an explicit fallback. Return `404 Not Found` if the company does not exist.
 

@@ -21,39 +21,40 @@ interface BackendCompanySearch {
 }
 
 interface BackendRegisteredOfficeAddress {
-  addressLine1?: string;
-  addressLine2?: string;
+  address_line_1?: string;
+  address_line_2?: string;
   country?: string;
   locality?: string;
-  postalCode?: string;
+  postal_code?: string;
   region?: string;
 }
 
+// Top-level model properties are camelCase; reused upstream DTOs retain JsonPropertyName names.
 interface BackendCompany extends BackendCompanySearch {
   version_count?: number;
   accounts?: {
-    accountingReferenceDate?: { day?: string; month?: string };
-    lastAccounts?: {
-      madeUpTo?: string;
-      periodEndOn?: string;
-      periodStartOn?: string;
+    accounting_reference_date?: { day?: string; month?: string };
+    last_accounts?: {
+      made_up_to?: string;
+      period_end_on?: string;
+      period_start_on?: string;
       type?: string;
     };
-    nextAccounts?: {
-      dueOn?: string;
+    next_accounts?: {
+      due_on?: string;
       overdue?: boolean;
-      periodEndOn?: string;
-      periodStartOn?: string;
+      period_end_on?: string;
+      period_start_on?: string;
     };
-    nextDue?: string;
-    nextMadeUpTo?: string;
+    next_due?: string;
+    next_made_up_to?: string;
     overdue?: boolean;
   };
   canFile?: boolean;
   confirmationStatement?: {
-    lastMadeUpTo?: string;
-    nextDue?: string;
-    nextMadeUpTo?: string;
+    last_made_up_to?: string;
+    next_due?: string;
+    next_made_up_to?: string;
     overdue?: boolean;
   };
   dateOfCreation?: string;
@@ -65,8 +66,8 @@ interface BackendCompany extends BackendCompanySearch {
   lastFullMembersListDate?: string;
   links?: Record<string, string>;
   previousCompanyNames?: readonly {
-    ceasedOn?: string;
-    effectiveFrom?: string;
+    ceased_on?: string;
+    effective_from?: string;
     name?: string;
   }[];
   registeredOfficeAddress?: BackendRegisteredOfficeAddress;
@@ -114,6 +115,7 @@ export class HttpCompanySearchService extends CompanySearchService {
 
     return this.http.get<readonly BackendCompanySearch[]>(endpoint, { params }).pipe(
       map((companies) => {
+        // The API returns a bounded result list; page only after retaining that list's total.
         const startIndex = (page - 1) * pageSize;
         const items = companies
           .slice(startIndex, startIndex + pageSize)
@@ -135,6 +137,7 @@ export class HttpCompanySearchService extends CompanySearchService {
     return this.http.get<BackendCompany>(`/registry_id/${encodedNumber}`).pipe(
       map((company) => this.toProfile(company)),
       catchError((error: unknown) => {
+        // An absent profile is a view state; transport and service failures remain errors.
         if (error instanceof HttpErrorResponse && error.status === 404) {
           return of(null);
         }
@@ -186,30 +189,30 @@ export class HttpCompanySearchService extends CompanySearchService {
     return {
       accounts: company.accounts
         ? {
-            accounting_reference_date: company.accounts.accountingReferenceDate
+            accounting_reference_date: company.accounts.accounting_reference_date
               ? {
-                  day: company.accounts.accountingReferenceDate.day ?? '',
-                  month: company.accounts.accountingReferenceDate.month ?? '',
+                  day: company.accounts.accounting_reference_date.day ?? '',
+                  month: company.accounts.accounting_reference_date.month ?? '',
                 }
               : undefined,
-            last_accounts: company.accounts.lastAccounts
+            last_accounts: company.accounts.last_accounts
               ? {
-                  made_up_to: company.accounts.lastAccounts.madeUpTo,
-                  period_end_on: company.accounts.lastAccounts.periodEndOn,
-                  period_start_on: company.accounts.lastAccounts.periodStartOn,
-                  type: company.accounts.lastAccounts.type,
+                  made_up_to: company.accounts.last_accounts.made_up_to,
+                  period_end_on: company.accounts.last_accounts.period_end_on,
+                  period_start_on: company.accounts.last_accounts.period_start_on,
+                  type: company.accounts.last_accounts.type,
                 }
               : undefined,
-            next_accounts: company.accounts.nextAccounts
+            next_accounts: company.accounts.next_accounts
               ? {
-                  due_on: company.accounts.nextAccounts.dueOn,
-                  overdue: company.accounts.nextAccounts.overdue,
-                  period_end_on: company.accounts.nextAccounts.periodEndOn,
-                  period_start_on: company.accounts.nextAccounts.periodStartOn,
+                  due_on: company.accounts.next_accounts.due_on,
+                  overdue: company.accounts.next_accounts.overdue,
+                  period_end_on: company.accounts.next_accounts.period_end_on,
+                  period_start_on: company.accounts.next_accounts.period_start_on,
                 }
               : undefined,
-            next_due: company.accounts.nextDue,
-            next_made_up_to: company.accounts.nextMadeUpTo,
+            next_due: company.accounts.next_due,
+            next_made_up_to: company.accounts.next_made_up_to,
             overdue: company.accounts.overdue,
           }
         : undefined,
@@ -219,9 +222,9 @@ export class HttpCompanySearchService extends CompanySearchService {
       company_status: company.companyStatus,
       confirmation_statement: company.confirmationStatement
         ? {
-            last_made_up_to: company.confirmationStatement.lastMadeUpTo,
-            next_due: company.confirmationStatement.nextDue,
-            next_made_up_to: company.confirmationStatement.nextMadeUpTo,
+            last_made_up_to: company.confirmationStatement.last_made_up_to,
+            next_due: company.confirmationStatement.next_due,
+            next_made_up_to: company.confirmationStatement.next_made_up_to,
             overdue: company.confirmationStatement.overdue,
           }
         : undefined,
@@ -235,17 +238,17 @@ export class HttpCompanySearchService extends CompanySearchService {
       last_full_members_list_date: company.lastFullMembersListDate,
       links: company.links,
       previous_company_names: company.previousCompanyNames?.map((previousName) => ({
-        ceased_on: previousName.ceasedOn,
-        effective_from: previousName.effectiveFrom,
+        ceased_on: previousName.ceased_on,
+        effective_from: previousName.effective_from,
         name: previousName.name ?? 'Not available',
       })),
       registered_office_address: company.registeredOfficeAddress
         ? {
-            address_line_1: company.registeredOfficeAddress.addressLine1,
-            address_line_2: company.registeredOfficeAddress.addressLine2,
+            address_line_1: company.registeredOfficeAddress.address_line_1,
+            address_line_2: company.registeredOfficeAddress.address_line_2,
             country: company.registeredOfficeAddress.country,
             locality: company.registeredOfficeAddress.locality,
-            postal_code: company.registeredOfficeAddress.postalCode,
+            postal_code: company.registeredOfficeAddress.postal_code,
             region: company.registeredOfficeAddress.region,
           }
         : company.address
