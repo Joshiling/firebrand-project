@@ -57,6 +57,40 @@ public sealed class CompaniesHouseSearchServiceTests
         Assert.Equal("LLOYDS BANK PLC", log.Companies.First().CompanyName);
     }
 
+        [Fact]
+        public async Task SearchAsync_PrioritisesCurrentNameMatchesOverBroadSubstringMatches()
+        {
+                // Arrange
+                const string searchJson = """
+                        {
+                            "items": [
+                                {
+                                    "company_number": "10000001",
+                                    "title": "Bulgarian Fruits LIMITED",
+                                    "company_status": "active"
+                                },
+                                {
+                                    "company_number": "00002065",
+                                    "title": "LLOYDS BANK PLC",
+                                    "company_status": "active"
+                                }
+                            ],
+                            "total_results": 2
+                        }
+                        """;
+
+                var httpClientFactory = CreateHttpClientFactory(HttpStatusCode.OK, searchJson);
+                var configuration = CreateConfiguration();
+                var service = new CompaniesHouseSearchService(httpClientFactory, configuration, _databaseService);
+
+                // Act
+                var results = await service.SearchAsync("Lloyds", CancellationToken.None);
+
+                // Assert
+                Assert.Equal("LLOYDS BANK PLC", results[0].Name);
+                Assert.Equal("Bulgarian Fruits LIMITED", results[1].Name);
+        }
+
     [Fact]
     public async Task SearchAsync_OnApiError_LogsFailureAndRethrows()
     {
