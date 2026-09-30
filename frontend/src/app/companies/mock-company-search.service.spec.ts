@@ -171,4 +171,22 @@ describe('MockCompanySearchService', () => {
     expect(result.totalResults).toBe(0);
     expect(result.items).toEqual([]);
   });
+
+  it('returns disjoint pages with stable totals, including an out-of-range page', async () => {
+    const pages = [];
+    for (const page of [1, 2, 3, 4]) {
+      pages.push(await completeSearch(' northstar ', page, 10));
+    }
+    expect(pages.map((page) => page.items.length)).toEqual([10, 10, 3, 0]);
+    expect(pages.map((page) => page.totalResults)).toEqual([23, 23, 23, 23]);
+    expect(new Set(pages.flatMap((page) => page.items.map((company) => company.registrationNumber))).size).toBe(23);
+  });
+
+  it('does not emit a delayed search after unsubscription', async () => {
+    const next = vi.fn();
+    const subscription = service.search({ query: 'Tesco', page: 1, pageSize: 10 }).subscribe(next);
+    subscription.unsubscribe();
+    await vi.advanceTimersByTimeAsync(300);
+    expect(next).not.toHaveBeenCalled();
+  });
 });

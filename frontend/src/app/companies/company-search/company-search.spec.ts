@@ -414,4 +414,56 @@ describe('CompanySearch', () => {
     expect(service.search).toHaveBeenLastCalledWith({ query: 'Northstar', page: 1, pageSize: 10 });
   });
 
+  it.each(['0', '-1', '1.5', 'abc'])('normalizes invalid URL page %s', async (page) => {
+    await TestBed.inject(Router).navigate([], { queryParams: { q: ' Tesco ', page } });
+    expect(service.search).toHaveBeenCalledExactlyOnceWith({ query: 'Tesco', page: 1, pageSize: 10 });
+  });
+
+  it('recovers after an error without recreating the component', async () => {
+    service.shouldFail = true;
+    setQuery('Tesco');
+    submit();
+    service.shouldFail = false;
+    submit();
+    await finishRequest();
+    expect(fixture.nativeElement.textContent).toContain('Tesco PLC');
+    expect(fixture.nativeElement.textContent).not.toContain('We could not complete the search');
+  });
+
+  it('cancels an older search and ignores its late response', async () => {
+    const older = new Subject<CompanySearchPage>();
+    const latest = new Subject<CompanySearchPage>();
+    service.search.mockReturnValueOnce(older).mockReturnValueOnce(latest);
+    const router = TestBed.inject(Router);
+    await router.navigate([], { queryParams: { q: 'Older' } });
+    await router.navigate([], { queryParams: { q: 'Latest' } });
+    expect(older.observed).toBe(false);
+    latest.next(service.response);
+    older.next({ ...service.response, items: [{ name: 'Stale result', registrationNumber: '12345678' }] });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Tesco PLC');
+    expect(fixture.nativeElement.textContent).not.toContain('Stale result');
+    fixture.destroy();
+    expect(latest.observed).toBe(false);
+  });
+
+  it('clears results and cancels the request when navigation removes the query', async () => {
+    const pending = new Subject<CompanySearchPage>();
+    service.search.mockReturnValue(pending);
+    const router = TestBed.inject(Router);
+    await router.navigate([], { queryParams: { q: 'Tesco' } });
+    pending.next(service.response);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Tesco PLC');
+
+    await router.navigate([], { queryParams: {} });
+    fixture.detectChanges();
+    expect(pending.observed).toBe(false);
+    expect(fixture.nativeElement.textContent).not.toContain('Tesco PLC');
+    expect(fixture.nativeElement.textContent).not.toContain('Searching company records');
+    expect((fixture.nativeElement.querySelector('input') as HTMLInputElement).value).toBe('');
+
+    await router.navigate([], { queryParams: { q: 'Tesco' } });
+    expect(service.search).toHaveBeenCalledTimes(2);
+  });
 });
