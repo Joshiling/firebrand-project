@@ -107,6 +107,7 @@ describe('HttpCompanySearchService', () => {
       registeredOfficeIsInDispute: false,
       sicCodes: ['64191'],
       undeliverableRegisteredOfficeAddress: false,
+      version_count: 3,
     });
 
     await expect(resultPromise).resolves.toMatchObject({
@@ -146,7 +147,48 @@ describe('HttpCompanySearchService', () => {
       registered_office_is_in_dispute: false,
       sic_codes: ['64191'],
       undeliverable_registered_office_address: false,
+      version_count: 3,
     });
+  });
+
+  it('loads and maps company history from the snake-case backend contract', async () => {
+    const resultPromise = firstValueFrom(service.getHistory('00002065'));
+    const request = http.expectOne('/registry_id/00002065/history');
+
+    expect(request.request.method).toBe('GET');
+    request.flush([
+      {
+        version_number: 2,
+        recorded_at: '2026-09-29T10:30:00Z',
+        company_number: '00002065',
+        company_name: 'LLOYDS BANK PLC',
+        company_status: 'active',
+        incorporation_date: '1865-04-20',
+        address: '25 Gresham Street, London, EC2V 7HN',
+        external_registration_number: 'EXT-1',
+      },
+    ]);
+
+    await expect(resultPromise).resolves.toEqual([
+      {
+        versionNumber: 2,
+        recordedAt: '2026-09-29T10:30:00Z',
+        companyNumber: '00002065',
+        companyName: 'LLOYDS BANK PLC',
+        companyStatus: 'active',
+        incorporationDate: '1865-04-20',
+        address: '25 Gresham Street, London, EC2V 7HN',
+        externalRegistrationNumber: 'EXT-1',
+      },
+    ]);
+  });
+
+  it('returns an empty history when the backend has no recorded company', async () => {
+    const resultPromise = firstValueFrom(service.getHistory('99999999'));
+    const request = http.expectOne('/registry_id/99999999/history');
+    request.flush(null, { status: 404, statusText: 'Not Found' });
+
+    await expect(resultPromise).resolves.toEqual([]);
   });
 
   it('returns null when the backend reports that details were not found', async () => {

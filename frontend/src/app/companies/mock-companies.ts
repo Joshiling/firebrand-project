@@ -1,4 +1,5 @@
 import { CompaniesHouseCompanyProfile } from './companies-house-profile';
+import { CompanyHistoryEntry } from './company.model';
 
 const northstarCompanies: CompaniesHouseCompanyProfile[] = Array.from(
   { length: 23 },
@@ -95,6 +96,7 @@ export const MOCK_COMPANY_PROFILES: readonly CompaniesHouseCompanyProfile[] = [
     type: 'plc',
     undeliverable_registered_office_address: false,
     has_super_secure_pscs: false,
+    version_count: 3,
   },
   {
     company_name: 'TESCO PLC',
@@ -125,3 +127,35 @@ export const MOCK_COMPANY_PROFILES: readonly CompaniesHouseCompanyProfile[] = [
   },
   ...northstarCompanies,
 ];
+
+export const MOCK_COMPANY_HISTORY: Readonly<Record<string, readonly CompanyHistoryEntry[]>> = {
+  '00002065': [
+    {
+      versionNumber: 3,
+      recordedAt: '2026-09-29T10:30:00Z',
+      companyNumber: '00002065',
+      companyName: 'LLOYDS BANK PLC',
+      companyStatus: 'active',
+      incorporationDate: '1865-04-20',
+      address: '25 Gresham Street, London, EC2V 7HN',
+    },
+    {
+      versionNumber: 2,
+      recordedAt: '2025-05-10T14:15:00Z',
+      companyNumber: '00002065',
+      companyName: 'LLOYDS BANK PLC',
+      companyStatus: 'active',
+      incorporationDate: '1865-04-20',
+      address: '71 Lombard Street, London, EC3P 3BS',
+    },
+    {
+      versionNumber: 1,
+      recordedAt: '2024-01-15T09:00:00Z',
+      companyNumber: '00002065',
+      companyName: 'LLOYDS BANK LIMITED',
+      companyStatus: 'active',
+      incorporationDate: '1865-04-20',
+      address: '71 Lombard Street, London, EC3P 3BS',
+    },
+  ],
+};

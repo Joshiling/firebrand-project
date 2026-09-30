@@ -215,15 +215,14 @@ public sealed class CompaniesHouseSearchService(
             ExternalRegistrationNumber = profile.ExternalRegistrationNumber ?? profile.ForeignCompanyDetails?.RegistrationNumber
         };
 
-        await databaseService.SaveSearchLogAsync(
+        var version = await databaseService.SaveCompanyProfileWithVersionAsync(
             registryId,
             StatusCodes.Status200OK,
-            1,
             rawJson,
-            new[] { dbRecord },
+            dbRecord,
             cancellationToken);
 
-        return company;
+        return company with { VersionCount = version.TotalVersions };
     }
 
     private async Task<(T Value, string RawJson)> GetJsonWithRawAsync<T>(

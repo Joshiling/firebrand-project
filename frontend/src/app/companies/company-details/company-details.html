@@ -33,12 +33,43 @@
         <h1>{{ company.company_name }}</h1>
         <p class="registration-number">Registration number {{ company.company_number }}</p>
       </div>
-      @if (company.company_status) {
-        <span class="status" [class]="'status status--' + statusTone(company.company_status)">
-          {{ formatLabel(company.company_status) }}
-        </span>
-      }
+      <div class="profile-actions">
+        @if (company.company_status) {
+          <span class="status" [class]="'status status--' + statusTone(company.company_status)">
+            {{ formatLabel(company.company_status) }}
+          </span>
+        }
+        @if ((company.version_count ?? 0) > 1) {
+          <button
+            type="button"
+            class="history-toggle"
+            aria-controls="company-version-history"
+            [attr.aria-expanded]="historyExpanded()"
+            (click)="toggleHistory()"
+          >
+            <ng-icon name="lucideHistory" size="18" aria-hidden="true" />
+            <span>
+              {{ historyExpanded() ? 'Hide history' : 'View history' }}
+              ({{ company.version_count }})
+            </span>
+            <ng-icon
+              name="lucideChevronDown"
+              size="17"
+              aria-hidden="true"
+            />
+          </button>
+        }
+      </div>
     </header>
+
+    @if (historyExpanded()) {
+      <app-company-version-history
+        [entries]="historyEntries()"
+        [loading]="loadingHistory()"
+        [failed]="historyFailed()"
+        (retry)="retryHistory()"
+      />
+    }
 
     <div class="details-grid">
       <section class="detail-section" aria-labelledby="overview-heading">

@@ -1,0 +1,42 @@
+flowchart TB
+    Browser[Angular client] --> Endpoint{ASP.NET endpoint}
+    Endpoint --> Service[CompaniesHouseSearchService]
+    Service --> Upstream[Companies House API]
+    Upstream --> Service
+
+    Service --> RequestType{Request type}
+
+    RequestType -->|Name or number search| SearchTx[Search transaction]
+    SearchTx --> SearchLog[(search_logs)]
+    SearchTx --> Current[(Companies)]
+    SearchTx --> Links[(search_log_companies)]
+    SearchTx -. no snapshots .-> History[(CompanyHistory)]
+
+    RequestType -->|Company profile| ProfileTx[Profile transaction]
+    ProfileTx --> SearchLog
+    ProfileTx --> Hash{Content hash changed?}
+    Hash -->|No| Seen[Update LastSeenAt]
+    Seen --> Current
+    Hash -->|Yes or first profile| Snapshot[Increment version and insert snapshot]
+    Snapshot --> Current
+    Snapshot --> History
+    ProfileTx --> Links
+
+    RequestType -->|History read| History
+    History --> Endpoint
+    Current --> Endpoint
+    Endpoint --> Browser
+
+    Startup[Schema initialization] --> Migration[(SchemaMigrations)]
+    Migration --> Backfill[Backfill existing companies as version 1]
+    Backfill --> Current
+    Backfill --> History
+
+    classDef client fill:#e8f1f5,stroke:#24566b,color:#183642
+    classDef service fill:#f7f1df,stroke:#8a6d1d,color:#3d3214
+    classDef database fill:#e9f3e6,stroke:#427a3b,color:#203b1d
+    classDef decision fill:#f8e8e5,stroke:#9b4b40,color:#49221d
+    class Browser,Endpoint client
+    class Service,Upstream,SearchTx,ProfileTx,Seen,Snapshot,Startup,Backfill service
+    class SearchLog,Current,Links,History,Migration database
+    class RequestType,Hash decision

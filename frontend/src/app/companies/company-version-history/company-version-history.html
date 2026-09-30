@@ -1,0 +1,84 @@
+<section
+  id="company-version-history"
+  class="version-history"
+  aria-labelledby="version-history-heading"
+>
+  <div class="version-history__heading">
+    <div>
+      <p class="eyebrow">Recorded changes</p>
+      <h2 id="version-history-heading">Company version history</h2>
+    </div>
+    <p>Compare previous names, statuses, and registered addresses.</p>
+  </div>
+
+  <div aria-live="polite">
+    @if (loading()) {
+      <div class="history-state" aria-busy="true">
+        <span class="spinner" aria-hidden="true"></span>
+        <p>Loading recorded versions...</p>
+      </div>
+    } @else if (failed()) {
+      <div class="history-state history-state--error" role="alert">
+        <ng-icon name="lucideCircleAlert" size="22" aria-hidden="true" />
+        <div>
+          <strong>Version history could not be loaded</strong>
+          <p>Please try again.</p>
+        </div>
+        <button type="button" class="history-retry" (click)="retry.emit()">
+          <ng-icon name="lucideRefreshCw" size="16" aria-hidden="true" />
+          Retry
+        </button>
+      </div>
+    } @else if (entries().length) {
+      <ol class="version-timeline">
+        @for (entry of entries(); track entry.versionNumber; let index = $index) {
+          <li [class.version-timeline__item--current]="index === 0">
+            <div class="version-marker" aria-hidden="true"></div>
+            <article>
+              <header class="version-header">
+                <div>
+                  <h3>Version {{ entry.versionNumber }}</h3>
+                  @if (index === 0) {
+                    <span class="current-version">Current</span>
+                  }
+                </div>
+                <time [attr.datetime]="entry.recordedAt">
+                  {{ formatTimestamp(entry.recordedAt) }} UTC
+                </time>
+              </header>
+
+              <div class="change-list" aria-label="Fields changed in this version">
+                @for (field of changedFields(entry, entries()[index + 1]); track field) {
+                  <span>{{ field }}</span>
+                }
+              </div>
+
+              <dl class="version-fields">
+                <div>
+                  <dt>Company name</dt>
+                  <dd>{{ entry.companyName }}</dd>
+                </div>
+                <div>
+                  <dt>Status</dt>
+                  <dd>{{ formatLabel(entry.companyStatus) }}</dd>
+                </div>
+                <div>
+                  <dt>Registered address</dt>
+                  <dd>{{ entry.address || 'Not available' }}</dd>
+                </div>
+                <div>
+                  <dt>Incorporated</dt>
+                  <dd>{{ formatDate(entry.incorporationDate) }}</dd>
+                </div>
+              </dl>
+            </article>
+          </li>
+        }
+      </ol>
+    } @else {
+      <div class="history-state">
+        <p>No recorded versions are available for this company.</p>
+      </div>
+    }
+  </div>
+</section>

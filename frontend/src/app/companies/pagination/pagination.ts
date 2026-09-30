@@ -15,6 +15,7 @@ export class Pagination {
   readonly totalResults = input.required<number>();
   readonly pageSize = input.required<number>();
   readonly disabled = input(false);
+  readonly label = input('Pagination');
   readonly pageChange = output<number>();
 
   protected readonly totalPages = computed(() =>

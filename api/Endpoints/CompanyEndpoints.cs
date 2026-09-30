@@ -1,3 +1,4 @@
+using Api.Database;
 using Api.Exceptions;
 using Api.Models;
 using Api.Services;
@@ -35,7 +36,29 @@ public static class CompanyEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status502BadGateway)
             .Produces<ProblemDetails>(StatusCodes.Status503ServiceUnavailable);
 
+        app.MapGet("/registry_id/{id}/history", GetHistoryByRegistryId)
+            .WithName("GetCompanyHistoryByRegistryId")
+            .WithSummary("Get company version history by registry ID")
+            .Produces<IReadOnlyList<CompanyHistoryRecord>>(StatusCodes.Status200OK)
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound);
+
         return app;
+    }
+
+    private static async Task<Results<Ok<IReadOnlyList<CompanyHistoryRecord>>, NotFound, BadRequest<ProblemDetails>>> GetHistoryByRegistryId(
+        string id,
+        ICompanyDatabaseService databaseService,
+        CancellationToken cancellationToken)
+    {
+        if (!IsValidRegistryId(id))
+        {
+            return TypedResults.BadRequest(CreateValidationProblem(
+                "The registry ID must contain digits, optionally preceded by two letters."));
+        }
+
+        var history = await databaseService.GetCompanyHistoryAsync(id, cancellationToken);
+        return history.Count == 0 ? TypedResults.NotFound() : TypedResults.Ok(history);
     }
 
     private static async Task<Results<Ok<IReadOnlyList<CompanySearch>>, BadRequest<ProblemDetails>, ProblemHttpResult>> SearchByRegistryId(
