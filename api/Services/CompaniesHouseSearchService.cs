@@ -38,7 +38,14 @@ public sealed class CompaniesHouseSearchService(
 
             // Companies House limits how far callers can page into broad searches. Returning the first
             // 100 matches keeps this MVP responsive and avoids a 416 response for names such as Lloyds.
-            foreach (var item in page.Items ?? [])
+            // Put matches in the current company name ahead of matches found through an old name.
+            // OrderByDescending puts the highest relevance score first. ThenBy keeps the original
+            // Companies House order when two companies have the same relevance score.
+            foreach (var item in (page.Items ?? [])
+                .Select((item, index) => new { Item = item, Index = index })
+                .OrderByDescending(result => GetSearchRelevance(result.Item.Title, searchTerm))
+                .ThenBy(result => result.Index)
+                .Select(result => result.Item))
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -298,6 +305,38 @@ public sealed class CompaniesHouseSearchService(
 
         var formatted = string.Join(", ", parts.Where(part => !string.IsNullOrWhiteSpace(part)));
         return string.IsNullOrWhiteSpace(formatted) ? null : formatted;
+    }
+
+    private static int GetSearchRelevance(string? companyName, string searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(companyName))
+        {
+            return 0;
+        }
+
+        var normalizedName = companyName.Trim();
+        var normalizedTerm = searchTerm.Trim();
+
+        // A higher score means the search term is a stronger match for the current name.
+        // 4 = the whole name matches, 3 = the name starts with the search term,
+        // 2 = a word starts with it, and 1 = it appears somewhere inside the name.
+        if (normalizedName.Equals(normalizedTerm, StringComparison.OrdinalIgnoreCase))
+        {
+            return 4;
+        }
+
+        if (normalizedName.StartsWith(normalizedTerm, StringComparison.OrdinalIgnoreCase))
+        {
+            return 3;
+        }
+
+        var nameWords = normalizedName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (nameWords.Any(word => word.StartsWith(normalizedTerm, StringComparison.OrdinalIgnoreCase)))
+        {
+            return 2;
+        }
+
+        return normalizedName.Contains(normalizedTerm, StringComparison.OrdinalIgnoreCase) ? 1 : 0;
     }
 
     private static Company ToCompany(CompanySearchItemDto item) => new()
