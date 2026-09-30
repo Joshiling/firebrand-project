@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, ElementRef, HostListener, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
@@ -9,9 +9,9 @@ import {
   FormGroup,
 } from '@angular/forms';
 import { catchError, EMPTY, map, of, startWith, Subject, switchMap } from 'rxjs';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideCircleAlert, lucideSearch, lucideSearchX } from '@ng-icons/lucide';
+import { lucideCheck, lucideChevronDown, lucideCircleAlert, lucideSearch, lucideSearchX } from '@ng-icons/lucide';
 import { CompanyFilterOptions, CompanySearchPage, CompanySearchRequest } from '../company.model';
 import { CompanySearchService } from '../company-search.service';
 import { CompanyResults } from '../company-results/company-results';
@@ -31,7 +31,7 @@ type SearchFilters = Pick<CompanySearchRequest, 'companyStatuses' | 'companyType
   templateUrl: './company-search.html',
   styleUrl: './company-search.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [provideIcons({ lucideCircleAlert, lucideSearch, lucideSearchX })],
+  providers: [provideIcons({ lucideCheck, lucideChevronDown, lucideCircleAlert, lucideSearch, lucideSearchX })],
 })
 export class CompanySearch {
   private readonly searchService = inject(CompanySearchService);
@@ -39,11 +39,11 @@ export class CompanySearch {
   private readonly router = inject(Router);
   private readonly requests = new Subject<CompanySearchRequest>();
   private readonly filterRequests = new Subject<void>();
+  private readonly statusPicker = viewChild<ElementRef<HTMLDetailsElement>>('statusPicker');
+  private readonly typePicker = viewChild<ElementRef<HTMLDetailsElement>>('typePicker');
   private lastSubmittedQuery = '';
   private submittedFilters: SearchFilters = {};
   private lastRequestedKey = '';
-  private previousStatusSelection = [''];
-  private previousTypeSelection = [''];
 
   protected readonly pageSize = 10;
   protected readonly filterOptions = signal<CompanyFilterOptions | null>(null);
@@ -84,22 +84,51 @@ export class CompanySearch {
     return value.replace(/([a-z])([A-Z])/g, '$1 $2');
   }
 
-  protected changeStatusSelection(): void {
-    this.previousStatusSelection = this.reconcileSelection(
-      this.searchForm.controls.companyStatuses, this.previousStatusSelection,
-    );
+  protected selectionLabel(values: readonly string[], fallback: string): string {
+    return values.filter(Boolean).map((value) => this.filterLabel(value)).join(', ') || fallback;
   }
 
-  protected changeTypeSelection(): void {
-    this.previousTypeSelection = this.reconcileSelection(
-      this.searchForm.controls.companyTypes, this.previousTypeSelection,
-    );
+  protected selectStatus(value: string, picker: HTMLDetailsElement): void {
+    this.selectOption(this.searchForm.controls.companyStatuses, value, picker);
+    this.statusFilter.set('');
+  }
+
+  protected selectType(value: string, picker: HTMLDetailsElement): void {
+    this.selectOption(this.searchForm.controls.companyTypes, value, picker);
+    this.typeFilter.set('');
+  }
+
+  protected closeOtherPicker(picker: HTMLDetailsElement): void {
+    if (picker.open) {
+      const other = picker === this.statusPicker()?.nativeElement
+        ? this.typePicker()?.nativeElement : this.statusPicker()?.nativeElement;
+      if (other) {
+        other.open = false;
+      }
+    }
+  }
+
+  @HostListener('document:click', ['$event'])
+  protected closePickersOutside(event: MouseEvent): void {
+    for (const picker of [this.statusPicker()?.nativeElement, this.typePicker()?.nativeElement]) {
+      if (picker && !picker.contains(event.target as Node)) {
+        picker.open = false;
+      }
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  protected closePickersOnEscape(): void {
+    for (const picker of [this.statusPicker()?.nativeElement, this.typePicker()?.nativeElement]) {
+      if (picker?.open) {
+        picker.open = false;
+        picker.querySelector('summary')?.focus();
+      }
+    }
   }
 
   protected clearFilters(): void {
     this.searchForm.patchValue({ companyStatuses: [''], companyTypes: [''], country: '' });
-    this.previousStatusSelection = [''];
-    this.previousTypeSelection = [''];
     this.statusFilter.set('');
     this.typeFilter.set('');
   }
@@ -109,12 +138,13 @@ export class CompanySearch {
     this.filterRequests.next();
   }
 
-  private reconcileSelection(control: FormControl<string[]>, previous: string[]): string[] {
-    const selected = control.value;
-    if (selected.includes('') && selected.length > 1) {
-      control.setValue(previous.includes('') ? selected.filter(Boolean) : ['']);
-    }
-    return control.value;
+  private selectOption(control: FormControl<string[]>, value: string, picker: HTMLDetailsElement): void {
+    const selected = control.value.filter(Boolean);
+    const next = selected.includes(value)
+      ? selected.filter((item) => item !== value) : [...selected, value];
+    control.setValue(value && next.length ? next : ['']);
+    picker.open = false;
+    picker.querySelector('summary')?.focus();
   }
 
   private matchingOptions<T extends string>(options: readonly T[], text: string, selected: readonly string[]): readonly T[] {
@@ -150,6 +180,8 @@ export class CompanySearch {
 
     // The URL is the source of truth when the page is opened, refreshed, or reached with Back.
     // Restoring these values lets users return from a company profile without losing their search.
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => this.restoreFromUrl(params));
+
     this.filterRequests.pipe(
       startWith(undefined),
       switchMap(() => this.searchService.getFilterOptions().pipe(
@@ -158,15 +190,25 @@ export class CompanySearch {
           return EMPTY;
         }),
       )),
-      switchMap((options) => {
+      takeUntilDestroyed(),
+    ).subscribe((options) => {
         this.filterOptions.set(options);
         this.filtersFailed.set(false);
-        return this.route.queryParamMap.pipe(map((params) => ({ params, options })));
-      }),
-      takeUntilDestroyed(),
-    ).subscribe(({ params, options }) => {
+        const params = this.route.snapshot.queryParamMap;
+        if (params.has('status') || params.has('type') || params.has('country')) {
+          this.restoreFromUrl(params);
+        }
+    });
+  }
+
+  private restoreFromUrl(params: ParamMap): void {
       const query = params.get('q')?.trim() ?? '';
       if (!query) {
+        return;
+      }
+
+      const options = this.filterOptions();
+      if (!options && (params.has('status') || params.has('type') || params.has('country'))) {
         return;
       }
 
@@ -174,9 +216,9 @@ export class CompanySearch {
       const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
       const filters: SearchFilters = {
         ...this.selectedFilters(
-          params.getAll('status').filter((value) => options.companyStatuses.includes(value)),
-          params.getAll('type').filter((value) => options.companyTypes.includes(value)),
-          options.countries.includes(params.get('country') ?? '')
+          params.getAll('status').filter((value) => options?.companyStatuses.includes(value)),
+          params.getAll('type').filter((value) => options?.companyTypes.includes(value)),
+          options?.countries.includes(params.get('country') ?? '')
             ? params.get('country')! : '',
         ),
       };
@@ -185,8 +227,6 @@ export class CompanySearch {
       const companyStatuses = filters.companyStatuses?.length ? [...filters.companyStatuses] : [''];
       const companyTypes = filters.companyTypes?.length ? [...filters.companyTypes] : [''];
       this.searchForm.setValue({ query, companyStatuses, companyTypes, country: filters.country ?? '' });
-      this.previousStatusSelection = companyStatuses;
-      this.previousTypeSelection = companyTypes;
       this.lastSubmittedQuery = query;
       this.submittedFilters = filters;
       this.currentPage.set(page);
@@ -196,14 +236,9 @@ export class CompanySearch {
       if (requestKey !== this.lastRequestedKey) {
         this.requestPage(page);
       }
-    });
   }
 
   protected submitSearch(): void {
-    if (!this.filterOptions()) {
-      return;
-    }
-
     this.searchForm.controls.query.markAsTouched();
     this.searchForm.controls.query.updateValueAndValidity();
 

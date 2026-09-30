@@ -54,7 +54,8 @@ h2 {
   line-height: 1.3;
 }
 
-label {
+label,
+.filter-label {
   display: block;
   margin-bottom: 0.5rem;
   color: var(--color-text);
@@ -175,7 +176,7 @@ button:disabled {
   padding-top: 1rem;
 }
 
-.filters summary {
+.filters > summary {
   width: fit-content;
   min-height: 2rem;
   align-content: center;
@@ -216,23 +217,91 @@ button:disabled {
   padding: 0.65rem;
 }
 
-.filter-option-search {
+.filter-picker {
+  position: relative;
+}
+
+.filter-picker summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.65rem 0.875rem;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.filter-picker summary::-webkit-details-marker {
+  display: none;
+}
+
+.filter-picker summary:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.filter-picker__value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-picker summary ng-icon {
+  flex: none;
+}
+
+.filter-picker__menu {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 0.25rem);
+  width: 100%;
+  padding: 0.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 0.5rem;
+  box-shadow: 0 0.5rem 1rem rgb(20 31 50 / 12%);
+}
+
+.filter-picker__menu input {
+  padding: 0.5rem 0.75rem;
   margin-bottom: 0.5rem;
 }
 
-.filters__grid select[multiple] {
-  min-height: 8.5rem;
-  overflow-x: auto;
+.filter-picker__list {
+  max-height: 12rem;
+  overflow-y: auto;
 }
 
-.filters__grid select[multiple] option:hover:not(:checked) {
+.filter-picker__list button {
+  justify-content: space-between;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.5rem;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  border-radius: 0.25rem;
+  font-weight: 400;
+  text-align: left;
+}
+
+.filter-picker__list button:hover:not(:disabled) {
   color: var(--color-text);
   background: var(--color-border);
 }
 
-.filters__grid select[multiple] option:checked {
+.filter-picker__list button[aria-pressed='true'],
+.filter-picker__list button[aria-pressed='true']:hover:not(:disabled) {
   color: #ffffff;
-  background: linear-gradient(var(--color-action), var(--color-action));
+  background: var(--color-action);
 }
 
 .results-panel {
