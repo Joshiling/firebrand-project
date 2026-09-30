@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { delay, Observable, of, throwError } from 'rxjs';
 import { CompanySearchPage, CompanySearchRequest } from '../company.model';
 import { CompanySearchService } from '../company-search.service';
@@ -141,4 +141,92 @@ describe('CompanySearch', () => {
 
     expect(service.search).toHaveBeenLastCalledWith({ query: 'Northstar', page: 2, pageSize: 10 });
   });
+
+  it('keeps submitted filters on pagination and in the company link', async () => {
+    service.response = { ...service.response, totalResults: 23 };
+    setQuery('Northstar');
+    const status = fixture.nativeElement.querySelector('#filter-status') as HTMLSelectElement;
+    status.options[0].selected = true;
+    status.options[1].selected = true;
+    status.dispatchEvent(new Event('change'));
+    const country = fixture.nativeElement.querySelector('#filter-country') as HTMLSelectElement;
+    country.value = 'England';
+    country.dispatchEvent(new Event('change'));
+    submit();
+    await finishRequest();
+
+    expect(service.search).toHaveBeenLastCalledWith({
+      query: 'Northstar', page: 1, pageSize: 10,
+      companyStatuses: ['Active', 'Dissolved'], country: 'England',
+    });
+    const link = fixture.nativeElement.querySelector('.company-row a') as HTMLAnchorElement;
+    const url = new URL(link.href);
+    expect(url.searchParams.getAll('status')).toEqual(['Active', 'Dissolved']);
+    expect(url.searchParams.has('city')).toBe(false);
+    expect(url.searchParams.get('country')).toBe('England');
+
+    status.options[0].selected = false;
+    status.dispatchEvent(new Event('change'));
+    const nextButton = Array.from(
+      fixture.nativeElement.querySelectorAll('app-pagination button') as NodeListOf<HTMLButtonElement>,
+    ).find((button) => button.textContent?.includes('Next'));
+    nextButton?.click();
+    expect(service.search).toHaveBeenLastCalledWith({
+      query: 'Northstar', page: 2, pageSize: 10,
+      companyStatuses: ['Active', 'Dissolved'], country: 'England',
+    });
+  });
+
+  it('restores filters and page from the URL', async () => {
+    await TestBed.inject(Router).navigate([], { queryParams: {
+      q: 'Lloyds', page: 2, status: ['Active', 'Dissolved'], type: ['Ltd', 'Plc'],
+      city: 'London', country: 'GreatBritain',
+    } });
+    fixture.detectChanges();
+
+    expect(service.search).toHaveBeenLastCalledWith({
+      query: 'Lloyds', page: 2, pageSize: 10,
+      companyStatuses: ['Active', 'Dissolved'], companyTypes: ['Ltd', 'Plc'],
+      country: 'GreatBritain',
+    });
+    expect(fixture.nativeElement.querySelector('#filter-city')).toBeNull();
+    const status = fixture.nativeElement.querySelector('#filter-status') as HTMLSelectElement;
+    expect(Array.from(status.selectedOptions, (option) => option.textContent?.trim())).toEqual([
+      'Active', 'Dissolved',
+    ]);
+  });
+
+  it('searches filter options without removing previously selected values', () => {
+    setQuery('Northstar');
+    const status = fixture.nativeElement.querySelector('#filter-status') as HTMLSelectElement;
+    status.options[0].selected = true;
+    status.dispatchEvent(new Event('change'));
+    const type = fixture.nativeElement.querySelector('#filter-type') as HTMLSelectElement;
+    type.options[1].selected = true;
+    type.dispatchEvent(new Event('change'));
+
+    const statusSearch = fixture.nativeElement.querySelector('input[aria-label="Find company status"]') as HTMLInputElement;
+    statusSearch.value = 'diss';
+    statusSearch.dispatchEvent(new Event('input'));
+    const typeSearch = fixture.nativeElement.querySelector('input[aria-label="Find company type"]') as HTMLInputElement;
+    typeSearch.value = 'partnership';
+    typeSearch.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    expect(Array.from(status.options, (option) => option.textContent?.trim())).toEqual(['Active', 'Dissolved']);
+    expect(status.selectedOptions.length).toBe(1);
+    expect(Array.from(type.options, (option) => option.textContent?.trim())).toContain('Limited Partnership');
+    expect(type.selectedOptions.length).toBe(1);
+    status.options[1].selected = true;
+    status.dispatchEvent(new Event('change'));
+    const partnership = Array.from(type.options).find((option) => option.textContent?.trim() === 'Limited Partnership');
+    partnership!.selected = true;
+    type.dispatchEvent(new Event('change'));
+    submit();
+    expect(service.search).toHaveBeenLastCalledWith({
+      query: 'Northstar', page: 1, pageSize: 10,
+      companyStatuses: ['Active', 'Dissolved'], companyTypes: ['Ltd', 'LimitedPartnership'],
+    });
+  });
+
 });

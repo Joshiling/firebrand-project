@@ -59,13 +59,7 @@ export class CompanyDetails {
   constructor() {
     // Carry the originating search state into the Back link. Query parameters are optional so a
     // directly opened company URL still works without inventing search values.
-    const queryParams = this.route.snapshot.queryParamMap;
-    const query = queryParams.get('q');
-    const page = queryParams.get('page');
-    this.backQueryParams = {
-      ...(query ? { q: query } : {}),
-      ...(page ? { page } : {}),
-    };
+    this.backQueryParams = this.route.snapshot.queryParams;
 
     // As on the search page, switchMap discards an older in-flight lookup if the route changes.
     // Converting success and failure into values keeps all view-state updates in one subscription.

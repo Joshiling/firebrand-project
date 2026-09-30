@@ -68,6 +68,7 @@ label {
 }
 
 input,
+select,
 button {
   min-height: 3rem;
   border-radius: 0.5rem;
@@ -88,7 +89,8 @@ button {
   pointer-events: none;
 }
 
-input {
+input,
+select {
   width: 100%;
   min-width: 0;
   padding: 0.75rem 0.875rem 0.75rem 2.75rem;
@@ -105,6 +107,7 @@ input::placeholder {
 }
 
 input:focus,
+select:focus,
 button:focus-visible {
   outline: var(--focus-ring);
   outline-offset: var(--focus-offset);
@@ -155,6 +158,46 @@ button:disabled {
 .validation {
   color: var(--color-danger);
   font-weight: 700;
+}
+
+.filters {
+  margin-top: 1.25rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 1rem;
+}
+
+.filters summary {
+  width: fit-content;
+  color: var(--color-action);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.filters__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.filters__grid input,
+.filters__grid select {
+  width: 100%;
+  padding: 0.65rem;
+}
+
+.filter-option-search {
+  margin-bottom: 0.5rem;
+}
+
+.filters__grid select[multiple] {
+  min-height: 8.5rem;
+  overflow-x: auto;
+}
+
+.filters__grid select[multiple] option:hover:not(:checked) {
+  color: var(--color-text);
+  background: var(--color-border);
 }
 
 .results-panel {
@@ -253,7 +296,8 @@ button:disabled {
 }
 
 @media (max-width: 30rem) {
-  .search-controls {
+  .search-controls,
+  .filters__grid {
     grid-template-columns: 1fr;
   }
 

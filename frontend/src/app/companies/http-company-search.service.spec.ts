@@ -63,6 +63,22 @@ describe('HttpCompanySearchService', () => {
     await expect(resultPromise).resolves.toMatchObject({ totalResults: 0 });
   });
 
+  it('sends repeated enum filters and the country filter to the backend', async () => {
+    const resultPromise = firstValueFrom(service.search({
+      query: ' Lloyds ', page: 1, pageSize: 10,
+      companyStatuses: ['Active', 'Dissolved'], companyTypes: ['Ltd', 'Plc'],
+      country: 'GreatBritain',
+    }));
+    const request = http.expectOne((candidate) => candidate.url === '/name');
+
+    expect(request.request.params.getAll('company_status')).toEqual(['Active', 'Dissolved']);
+    expect(request.request.params.getAll('company_type')).toEqual(['Ltd', 'Plc']);
+    expect(request.request.params.has('city')).toBe(false);
+    expect(request.request.params.get('country')).toBe('GreatBritain');
+    request.flush([]);
+    await expect(resultPromise).resolves.toMatchObject({ totalResults: 0 });
+  });
+
   it('maps backend details into the Companies House profile shape used by the view', async () => {
     const resultPromise = firstValueFrom(service.getDetails('00002065'));
     const request = http.expectOne('/registry_id/00002065');

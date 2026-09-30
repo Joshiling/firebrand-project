@@ -79,7 +79,16 @@ export class HttpCompanySearchService extends CompanySearchService {
     const isRegistrationNumber = classifyCompanyQuery(query) === 'registrationNumber';
     const endpoint = isRegistrationNumber ? '/registry_id' : '/name';
     const parameterName = isRegistrationNumber ? 'registry_id' : 'name';
-    const params = new HttpParams().set(parameterName, query);
+    let params = new HttpParams().set(parameterName, query);
+    for (const status of request.companyStatuses ?? []) {
+      params = params.append('company_status', status);
+    }
+    for (const type of request.companyTypes ?? []) {
+      params = params.append('company_type', type);
+    }
+    if (request.country) {
+      params = params.set('country', request.country);
+    }
 
     return this.http.get<readonly BackendCompanySearch[]>(endpoint, { params }).pipe(
       map((companies) => {
