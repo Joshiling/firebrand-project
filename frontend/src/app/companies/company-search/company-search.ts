@@ -8,11 +8,11 @@ import {
   FormControl,
   FormGroup,
 } from '@angular/forms';
-import { catchError, map, of, Subject, switchMap } from 'rxjs';
+import { catchError, EMPTY, map, of, startWith, Subject, switchMap } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideCircleAlert, lucideSearch, lucideSearchX } from '@ng-icons/lucide';
-import { CompanySearchPage, CompanySearchRequest } from '../company.model';
+import { CompanyFilterOptions, CompanySearchPage, CompanySearchRequest } from '../company.model';
 import { CompanySearchService } from '../company-search.service';
 import { CompanyResults } from '../company-results/company-results';
 import { Pagination } from '../pagination/pagination';
@@ -22,22 +22,6 @@ function requiredTrimmed(control: AbstractControl<string>): ValidationErrors | n
 }
 
 type SearchOutcome = { kind: 'success'; result: CompanySearchPage } | { kind: 'error' };
-
-const statusOptions = ['Active', 'Dissolved', 'Open', 'Closed', 'ConvertedClosed',
-  'Receivership', 'Administration', 'Liquidation', 'InsolvencyProceedings',
-  'VoluntaryArrangement', 'Registered', 'Removed'] as const;
-const typeOptions = ['PrivateUnlimited', 'Ltd', 'Plc', 'OldPublicCompany',
-  'PrivateLimitedGuarantorNscLimitedExemption', 'LimitedPartnership',
-  'PrivateLimitedGuarantorNsc', 'ConvertedOrClosed', 'PrivateUnlimitedNsc',
-  'PrivateLimitedSharesSection30Exemption', 'ProtectedCellCompany', 'AssuranceCompany',
-  'OverseaCompany', 'Eeig', 'IcvcSecurities', 'IcvcWarrant', 'IcvcUmbrella',
-  'RegisteredSocietyNonJurisdictional', 'IndustrialAndProvidentSociety',
-  'NorthernIreland', 'NorthernIrelandOther', 'RoyalCharter',
-  'InvestmentCompanyWithVariableCapital', 'UnregisteredCompany',
-  'LimitedLiabilityPartnership', 'Other', 'EuropeanPublicLimitedLiabilityCompanySe',
-  'UkEstablishment', 'ScottishPartnership'] as const;
-const countryOptions = ['Wales', 'England', 'Scotland', 'GreatBritain',
-  'NotSpecified', 'UnitedKingdom', 'NorthernIreland'] as const;
 
 type SearchFilters = Pick<CompanySearchRequest, 'companyStatuses' | 'companyTypes' | 'country'>;
 
@@ -54,6 +38,7 @@ export class CompanySearch {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly requests = new Subject<CompanySearchRequest>();
+  private readonly filterRequests = new Subject<void>();
   private lastSubmittedQuery = '';
   private submittedFilters: SearchFilters = {};
   private lastRequestedKey = '';
@@ -61,9 +46,8 @@ export class CompanySearch {
   private previousTypeSelection = [''];
 
   protected readonly pageSize = 10;
-  protected readonly statusOptions = statusOptions;
-  protected readonly typeOptions = typeOptions;
-  protected readonly countryOptions = countryOptions;
+  protected readonly filterOptions = signal<CompanyFilterOptions | null>(null);
+  protected readonly filtersFailed = signal(false);
   protected readonly statusFilter = signal('');
   protected readonly typeFilter = signal('');
   protected readonly searchForm = new FormGroup({
@@ -76,16 +60,15 @@ export class CompanySearch {
     country: new FormControl('', { nonNullable: true }),
   });
   protected readonly visibleStatuses = computed(() => this.matchingOptions(
-    statusOptions, this.statusFilter(), this.searchForm.controls.companyStatuses.value,
+    this.filterOptions()?.companyStatuses ?? [], this.statusFilter(), this.searchForm.controls.companyStatuses.value,
   ));
   protected readonly visibleTypes = computed(() => this.matchingOptions(
-    typeOptions, this.typeFilter(), this.searchForm.controls.companyTypes.value,
+    this.filterOptions()?.companyTypes ?? [], this.typeFilter(), this.searchForm.controls.companyTypes.value,
   ));
   protected readonly result = signal<CompanySearchPage | null>(null);
   protected readonly loading = signal(false);
   protected readonly hasSearched = signal(false);
   protected readonly requestFailed = signal(false);
-  protected readonly submittedQuery = signal('');
   protected readonly currentPage = signal(1);
 
   protected searchParams(): Record<string, string | number | readonly string[] | undefined> {
@@ -119,6 +102,11 @@ export class CompanySearch {
     this.previousTypeSelection = [''];
     this.statusFilter.set('');
     this.typeFilter.set('');
+  }
+
+  protected retryFilterOptions(): void {
+    this.filtersFailed.set(false);
+    this.filterRequests.next();
   }
 
   private reconcileSelection(control: FormControl<string[]>, previous: string[]): string[] {
@@ -162,7 +150,21 @@ export class CompanySearch {
 
     // The URL is the source of truth when the page is opened, refreshed, or reached with Back.
     // Restoring these values lets users return from a company profile without losing their search.
-    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+    this.filterRequests.pipe(
+      startWith(undefined),
+      switchMap(() => this.searchService.getFilterOptions().pipe(
+        catchError(() => {
+          this.filtersFailed.set(true);
+          return EMPTY;
+        }),
+      )),
+      switchMap((options) => {
+        this.filterOptions.set(options);
+        this.filtersFailed.set(false);
+        return this.route.queryParamMap.pipe(map((params) => ({ params, options })));
+      }),
+      takeUntilDestroyed(),
+    ).subscribe(({ params, options }) => {
       const query = params.get('q')?.trim() ?? '';
       if (!query) {
         return;
@@ -172,9 +174,9 @@ export class CompanySearch {
       const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
       const filters: SearchFilters = {
         ...this.selectedFilters(
-          params.getAll('status').filter((value) => statusOptions.includes(value as typeof statusOptions[number])),
-          params.getAll('type').filter((value) => typeOptions.includes(value as typeof typeOptions[number])),
-          countryOptions.includes(params.get('country') as typeof countryOptions[number])
+          params.getAll('status').filter((value) => options.companyStatuses.includes(value)),
+          params.getAll('type').filter((value) => options.companyTypes.includes(value)),
+          options.countries.includes(params.get('country') ?? '')
             ? params.get('country')! : '',
         ),
       };
@@ -187,7 +189,6 @@ export class CompanySearch {
       this.previousTypeSelection = companyTypes;
       this.lastSubmittedQuery = query;
       this.submittedFilters = filters;
-      this.submittedQuery.set(query);
       this.currentPage.set(page);
 
       // Updating the URL after a search emits queryParamMap again. The key avoids sending the
@@ -199,6 +200,10 @@ export class CompanySearch {
   }
 
   protected submitSearch(): void {
+    if (!this.filterOptions()) {
+      return;
+    }
+
     this.searchForm.controls.query.markAsTouched();
     this.searchForm.controls.query.updateValueAndValidity();
 
@@ -209,7 +214,6 @@ export class CompanySearch {
     this.lastSubmittedQuery = this.searchForm.controls.query.value.trim();
     const { companyStatuses, companyTypes, country } = this.searchForm.getRawValue();
     this.submittedFilters = this.selectedFilters(companyStatuses, companyTypes, country);
-    this.submittedQuery.set(this.lastSubmittedQuery);
     this.currentPage.set(1);
     this.requestPage(1);
     this.updateSearchUrl(1);

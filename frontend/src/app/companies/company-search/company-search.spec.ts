@@ -1,11 +1,21 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { delay, Observable, of, throwError } from 'rxjs';
-import { CompanySearchPage, CompanySearchRequest } from '../company.model';
+import { delay, Observable, of, Subject, throwError } from 'rxjs';
+import { CompanyFilterOptions, CompanySearchPage, CompanySearchRequest } from '../company.model';
 import { CompanySearchService } from '../company-search.service';
 import { CompanySearch } from './company-search';
 
 class SearchServiceStub extends CompanySearchService {
+  optionsResponse?: Observable<CompanyFilterOptions>;
+  options: CompanyFilterOptions = {
+    companyStatuses: ['Active', 'Dissolved'],
+    companyTypes: ['PrivateUnlimited', 'Ltd', 'Plc', 'LimitedPartnership'],
+    countries: ['England', 'GreatBritain'],
+  };
+  override getFilterOptions(): Observable<CompanyFilterOptions> {
+    return this.optionsResponse ?? of(this.options);
+  }
+
   response: CompanySearchPage = {
     items: [
       {
@@ -194,6 +204,47 @@ describe('CompanySearch', () => {
     expect(Array.from(status.selectedOptions, (option) => option.textContent?.trim())).toEqual([
       'Active', 'Dissolved',
     ]);
+  });
+
+  it('waits for metadata and accepts new API values when restoring URL filters', async () => {
+    const options = new Subject<CompanyFilterOptions>();
+    service.optionsResponse = options;
+    fixture.destroy();
+    fixture = TestBed.createComponent(CompanySearch);
+    fixture.detectChanges();
+    await TestBed.inject(Router).navigate([], { queryParams: {
+      q: 'Northstar', status: ['PendingReview', 'Active'], type: ['NewCompanyType', 'Ltd'], country: 'Wales',
+    } });
+    fixture.detectChanges();
+
+    expect(service.search).not.toHaveBeenCalled();
+    expect((fixture.nativeElement.querySelector('button[type="submit"]') as HTMLButtonElement).disabled).toBe(true);
+    options.next({ companyStatuses: ['PendingReview'], companyTypes: ['NewCompanyType'], countries: ['Wales'] });
+    fixture.detectChanges();
+
+    expect(service.search).toHaveBeenLastCalledWith({
+      query: 'Northstar', page: 1, pageSize: 10,
+      companyStatuses: ['PendingReview'], companyTypes: ['NewCompanyType'], country: 'Wales',
+    });
+    const status = fixture.nativeElement.querySelector('#filter-status') as HTMLSelectElement;
+    expect(Array.from(status.options, (option) => option.textContent?.trim())).toEqual([
+      'Any company status', 'Pending Review',
+    ]);
+  });
+
+  it('allows retrying failed metadata without sending a search with invalid filters', () => {
+    service.optionsResponse = throwError(() => new Error('Metadata unavailable'));
+    fixture.destroy();
+    fixture = TestBed.createComponent(CompanySearch);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Could not load search filters');
+    expect((fixture.nativeElement.querySelector('button[type="submit"]') as HTMLButtonElement).disabled).toBe(true);
+    service.optionsResponse = of(service.options);
+    (fixture.nativeElement.querySelector('.filter-load-error button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#filter-status')).not.toBeNull();
+    expect((fixture.nativeElement.querySelector('button[type="submit"]') as HTMLButtonElement).disabled).toBe(false);
   });
 
   it('searches filter options without removing previously selected values', () => {

@@ -160,6 +160,14 @@ button:disabled {
   font-weight: 700;
 }
 
+.filter-load-error {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  color: var(--color-danger);
+}
+
 .filters {
   position: relative;
   margin-top: 1.25rem;

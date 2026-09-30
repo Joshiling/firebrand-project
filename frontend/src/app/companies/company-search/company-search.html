@@ -22,7 +22,7 @@
           "
         />
       </div>
-      <button type="submit" [disabled]="loading()">
+      <button type="submit" [disabled]="loading() || !filterOptions()">
         @if (loading()) {
           <span class="spinner" aria-hidden="true"></span>
           Searching
@@ -37,6 +37,15 @@
         Enter a company name or registration number.
       </p>
     }
+    @if (filtersFailed()) {
+      <div class="filter-load-error" role="alert">
+        <span>Could not load search filters.</span>
+        <button type="button" (click)="retryFilterOptions()">Retry</button>
+      </div>
+    } @else if (!filterOptions()) {
+      <p class="hint" role="status">Loading search filters...</p>
+    }
+    @if (filterOptions()) {
     <details class="filters">
       <summary>Filters</summary>
       <button class="filters__clear" type="button" (click)="clearFilters()">Clear all</button>
@@ -75,13 +84,14 @@
           <label for="filter-country">Registered office country</label>
           <select id="filter-country" formControlName="country">
             <option value="">Any country</option>
-            @for (country of countryOptions; track country) {
+            @for (country of filterOptions()?.countries ?? []; track country) {
               <option [value]="country">{{ filterLabel(country) }}</option>
             }
           </select>
         </div>
       </div>
     </details>
+    }
   </form>
 </section>
 
@@ -118,8 +128,6 @@
     @if (searchResult.items.length > 0) {
       <app-company-results
         [companies]="searchResult.items"
-        [searchQuery]="submittedQuery()"
-        [searchPage]="currentPage()"
         [searchParams]="searchParams()"
       />
       @if (searchResult.totalResults > pageSize) {

@@ -2,7 +2,7 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { inject, Injectable } from '@angular/core';
 import { catchError, map, Observable, of, throwError } from 'rxjs';
 import { CompaniesHouseCompanyProfile } from './companies-house-profile';
-import { CompanySearchPage, CompanySearchRequest, CompanySummary } from './company.model';
+import { CompanyFilterOptions, CompanySearchPage, CompanySearchRequest, CompanySummary } from './company.model';
 import { classifyCompanyQuery } from './company-query';
 import { CompanySearchService } from './company-search.service';
 
@@ -71,6 +71,10 @@ interface BackendCompany extends BackendCompanySearch {
 @Injectable()
 export class HttpCompanySearchService extends CompanySearchService {
   private readonly http = inject(HttpClient);
+
+  override getFilterOptions(): Observable<CompanyFilterOptions> {
+    return this.http.get<CompanyFilterOptions>('/search/filters');
+  }
 
   override search(request: CompanySearchRequest): Observable<CompanySearchPage> {
     const query = request.query.trim();

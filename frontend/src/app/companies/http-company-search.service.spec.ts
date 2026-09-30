@@ -19,6 +19,15 @@ describe('HttpCompanySearchService', () => {
 
   afterEach(() => http.verify());
 
+  it('loads supported filter values from the API', async () => {
+    const resultPromise = firstValueFrom(service.getFilterOptions());
+    const request = http.expectOne('/search/filters');
+    expect(request.request.method).toBe('GET');
+    const options = { companyStatuses: ['Active'], companyTypes: ['Ltd'], countries: ['Wales'] };
+    request.flush(options);
+    await expect(resultPromise).resolves.toEqual(options);
+  });
+
   it('searches by company name and maps a page of backend results', async () => {
     const resultPromise = firstValueFrom(
       service.search({ query: ' Lloyds ', page: 2, pageSize: 1 }),

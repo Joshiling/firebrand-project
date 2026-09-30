@@ -10,6 +10,11 @@ public static class CompanyEndpoints
 {
     public static WebApplication MapCompanyEndpoints(this WebApplication app)
     {
+        app.MapGet("/search/filters", GetFilterOptions)
+            .WithName("GetCompanySearchFilters")
+            .WithSummary("List supported company search filters")
+            .Produces<CompanyFilterOptionsResponse>(StatusCodes.Status200OK);
+
         app.MapGet("/registry_id", SearchByRegistryId)
             .WithName("SearchCompaniesByRegistryId")
             .WithSummary("Search companies by registry ID")
@@ -37,6 +42,12 @@ public static class CompanyEndpoints
 
         return app;
     }
+
+    private static Ok<CompanyFilterOptionsResponse> GetFilterOptions() => TypedResults.Ok(
+        new CompanyFilterOptionsResponse(
+            Enum.GetNames<CompanyStatusFilter>(),
+            Enum.GetNames<CompanyTypeFilter>(),
+            Enum.GetNames<RegisteredOfficeCountryFilter>()));
 
     private static async Task<Results<Ok<IReadOnlyList<CompanySearch>>, BadRequest<ProblemDetails>, ProblemHttpResult>> SearchByRegistryId(
         [FromQuery(Name = "registry_id")] string? registryId,

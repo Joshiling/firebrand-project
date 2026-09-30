@@ -14,8 +14,6 @@ import { CompanySummary } from '../company.model';
 })
 export class CompanyResults {
   readonly companies = input.required<readonly CompanySummary[]>();
-  readonly searchQuery = input('');
-  readonly searchPage = input(1);
   readonly searchParams = input<Params>({});
 
   protected formatAddress(company: CompanySummary): string {

@@ -22,6 +22,12 @@ export interface CompanySearchRequest {
   country?: string;
 }
 
+export interface CompanyFilterOptions {
+  companyStatuses: readonly string[];
+  companyTypes: readonly string[];
+  countries: readonly string[];
+}
+
 export interface CompanySearchPage {
   items: readonly CompanySummary[];
   totalResults: number;
