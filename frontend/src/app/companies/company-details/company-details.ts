@@ -66,12 +66,14 @@ export class CompanyDetails {
   protected readonly historyEntries = signal<readonly CompanyHistoryEntry[]>([]);
   protected readonly loadingHistory = signal(false);
   protected readonly historyFailed = signal(false);
-  protected readonly backQueryParams: Params;
+  protected readonly backQueryParams = signal<Params>({});
 
   constructor() {
-    // Carry the originating search state into the Back link. Query parameters are optional so a
-    // directly opened company URL still works without inventing search values.
-    this.backQueryParams = this.route.snapshot.queryParams;
+    // Angular can reuse this component for another company or search context.
+    // Preserve every submitted filter; missing parameters leave a plain Back link for direct visits.
+    this.route.queryParams.pipe(takeUntilDestroyed()).subscribe((queryParams) => {
+      this.backQueryParams.set(queryParams);
+    });
 
     // As on the search page, switchMap discards an older in-flight lookup if the route changes.
     // Converting success and failure into values keeps all view-state updates in one subscription.
@@ -175,7 +177,15 @@ export class CompanyDetails {
     }
 
     // Build the date in UTC so a date-only API value cannot shift by one day in another timezone.
-    const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+    const year = Number(match[1]);
+    const month = Number(match[2]) - 1;
+    const day = Number(match[3]);
+    const date = new Date(0);
+    date.setUTCFullYear(year, month, day);
+    // Date normalizes impossible dates; retain the source instead of presenting invented data.
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month || date.getUTCDate() !== day) {
+      return value;
+    }
     return new Intl.DateTimeFormat('en-GB', {
       day: 'numeric',
       month: 'short',
