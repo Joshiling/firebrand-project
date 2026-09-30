@@ -87,6 +87,7 @@ public sealed class CompaniesHouseSearchServiceTests
                 var results = await service.SearchAsync("Lloyds", CancellationToken.None);
 
                 // Assert
+                // The current name match should appear before a result that only matched an old name.
                 Assert.Equal("LLOYDS BANK PLC", results[0].Name);
                 Assert.Equal("Bulgarian Fruits LIMITED", results[1].Name);
         }

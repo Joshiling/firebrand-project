@@ -38,6 +38,9 @@ public sealed class CompaniesHouseSearchService(
 
             // Companies House limits how far callers can page into broad searches. Returning the first
             // 100 matches keeps this MVP responsive and avoids a 416 response for names such as Lloyds.
+            // Put matches in the current company name ahead of matches found through an old name.
+            // OrderByDescending puts the highest relevance score first. ThenBy keeps the original
+            // Companies House order when two companies have the same relevance score.
             foreach (var item in (page.Items ?? [])
                 .Select((item, index) => new { Item = item, Index = index })
                 .OrderByDescending(result => GetSearchRelevance(result.Item.Title, searchTerm))
@@ -314,6 +317,9 @@ public sealed class CompaniesHouseSearchService(
         var normalizedName = companyName.Trim();
         var normalizedTerm = searchTerm.Trim();
 
+        // A higher score means the search term is a stronger match for the current name.
+        // 4 = the whole name matches, 3 = the name starts with the search term,
+        // 2 = a word starts with it, and 1 = it appears somewhere inside the name.
         if (normalizedName.Equals(normalizedTerm, StringComparison.OrdinalIgnoreCase))
         {
             return 4;
