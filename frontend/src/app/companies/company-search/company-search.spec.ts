@@ -146,8 +146,8 @@ describe('CompanySearch', () => {
     service.response = { ...service.response, totalResults: 23 };
     setQuery('Northstar');
     const status = fixture.nativeElement.querySelector('#filter-status') as HTMLSelectElement;
-    status.options[0].selected = true;
     status.options[1].selected = true;
+    status.options[2].selected = true;
     status.dispatchEvent(new Event('change'));
     const country = fixture.nativeElement.querySelector('#filter-country') as HTMLSelectElement;
     country.value = 'England';
@@ -165,7 +165,7 @@ describe('CompanySearch', () => {
     expect(url.searchParams.has('city')).toBe(false);
     expect(url.searchParams.get('country')).toBe('England');
 
-    status.options[0].selected = false;
+    status.options[1].selected = false;
     status.dispatchEvent(new Event('change'));
     const nextButton = Array.from(
       fixture.nativeElement.querySelectorAll('app-pagination button') as NodeListOf<HTMLButtonElement>,
@@ -199,10 +199,10 @@ describe('CompanySearch', () => {
   it('searches filter options without removing previously selected values', () => {
     setQuery('Northstar');
     const status = fixture.nativeElement.querySelector('#filter-status') as HTMLSelectElement;
-    status.options[0].selected = true;
+    status.options[1].selected = true;
     status.dispatchEvent(new Event('change'));
     const type = fixture.nativeElement.querySelector('#filter-type') as HTMLSelectElement;
-    type.options[1].selected = true;
+    type.options[2].selected = true;
     type.dispatchEvent(new Event('change'));
 
     const statusSearch = fixture.nativeElement.querySelector('input[aria-label="Find company status"]') as HTMLInputElement;
@@ -213,11 +213,11 @@ describe('CompanySearch', () => {
     typeSearch.dispatchEvent(new Event('input'));
     fixture.detectChanges();
 
-    expect(Array.from(status.options, (option) => option.textContent?.trim())).toEqual(['Active', 'Dissolved']);
+    expect(Array.from(status.options, (option) => option.textContent?.trim())).toEqual(['Any company status', 'Active', 'Dissolved']);
     expect(status.selectedOptions.length).toBe(1);
     expect(Array.from(type.options, (option) => option.textContent?.trim())).toContain('Limited Partnership');
     expect(type.selectedOptions.length).toBe(1);
-    status.options[1].selected = true;
+    status.options[2].selected = true;
     status.dispatchEvent(new Event('change'));
     const partnership = Array.from(type.options).find((option) => option.textContent?.trim() === 'Limited Partnership');
     partnership!.selected = true;
@@ -227,6 +227,64 @@ describe('CompanySearch', () => {
       query: 'Northstar', page: 1, pageSize: 10,
       companyStatuses: ['Active', 'Dissolved'], companyTypes: ['Ltd', 'LimitedPartnership'],
     });
+  });
+
+  it('selecting Any clears a specific status or type without sending an empty enum', () => {
+    setQuery('Northstar');
+    const status = fixture.nativeElement.querySelector('#filter-status') as HTMLSelectElement;
+    const type = fixture.nativeElement.querySelector('#filter-type') as HTMLSelectElement;
+    expect(status.selectedOptions[0].textContent).toBe('Any company status');
+    expect(type.selectedOptions[0].textContent).toBe('Any company type');
+
+    status.options[0].selected = false;
+    status.options[1].selected = true;
+    status.dispatchEvent(new Event('change'));
+    type.options[0].selected = false;
+    type.options[2].selected = true;
+    type.dispatchEvent(new Event('change'));
+    status.options[0].selected = true;
+    status.dispatchEvent(new Event('change'));
+    type.options[0].selected = true;
+    type.dispatchEvent(new Event('change'));
+
+    expect(Array.from(status.selectedOptions, (option) => option.textContent)).toEqual(['Any company status']);
+    expect(Array.from(type.selectedOptions, (option) => option.textContent)).toEqual(['Any company type']);
+    submit();
+    expect(service.search).toHaveBeenLastCalledWith({ query: 'Northstar', page: 1, pageSize: 10 });
+  });
+
+  it('clears all filter controls without submitting or clearing the query', () => {
+    setQuery('Northstar');
+    const status = fixture.nativeElement.querySelector('#filter-status') as HTMLSelectElement;
+    const type = fixture.nativeElement.querySelector('#filter-type') as HTMLSelectElement;
+    status.options[0].selected = false;
+    status.options[1].selected = true;
+    status.dispatchEvent(new Event('change'));
+    type.options[0].selected = false;
+    type.options[2].selected = true;
+    type.dispatchEvent(new Event('change'));
+    const country = fixture.nativeElement.querySelector('#filter-country') as HTMLSelectElement;
+    country.value = 'England';
+    country.dispatchEvent(new Event('change'));
+    const statusSearch = fixture.nativeElement.querySelector('input[aria-label="Find company status"]') as HTMLInputElement;
+    statusSearch.value = 'active';
+    statusSearch.dispatchEvent(new Event('input'));
+    const typeSearch = fixture.nativeElement.querySelector('input[aria-label="Find company type"]') as HTMLInputElement;
+    typeSearch.value = 'ltd';
+    typeSearch.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('.filters__clear') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect((fixture.nativeElement.querySelector('#company-query') as HTMLInputElement).value).toBe('Northstar');
+    expect(Array.from(status.selectedOptions, (option) => option.textContent)).toEqual(['Any company status']);
+    expect(Array.from(type.selectedOptions, (option) => option.textContent)).toEqual(['Any company type']);
+    expect(country.value).toBe('');
+    expect(statusSearch.value).toBe('');
+    expect(typeSearch.value).toBe('');
+    expect(service.search).not.toHaveBeenCalled();
+    submit();
+    expect(service.search).toHaveBeenLastCalledWith({ query: 'Northstar', page: 1, pageSize: 10 });
   });
 
 });

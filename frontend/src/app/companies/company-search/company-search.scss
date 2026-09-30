@@ -161,6 +161,7 @@ button:disabled {
 }
 
 .filters {
+  position: relative;
   margin-top: 1.25rem;
   border-top: 1px solid var(--color-border);
   padding-top: 1rem;
@@ -168,9 +169,30 @@ button:disabled {
 
 .filters summary {
   width: fit-content;
+  min-height: 2rem;
+  align-content: center;
   color: var(--color-action);
   font-weight: 700;
   cursor: pointer;
+}
+
+.filters__clear {
+  position: absolute;
+  top: 1rem;
+  right: 0;
+  min-width: 0;
+  min-height: 2rem;
+  padding: 0.25rem 0.5rem;
+  color: var(--color-action);
+  background: transparent;
+  border-color: transparent;
+  font-size: 0.875rem;
+}
+
+.filters__clear:hover:not(:disabled) {
+  color: var(--color-action-hover);
+  background: var(--color-border);
+  border-color: transparent;
 }
 
 .filters__grid {
@@ -198,6 +220,11 @@ button:disabled {
 .filters__grid select[multiple] option:hover:not(:checked) {
   color: var(--color-text);
   background: var(--color-border);
+}
+
+.filters__grid select[multiple] option:checked {
+  color: #ffffff;
+  background: linear-gradient(var(--color-action), var(--color-action));
 }
 
 .results-panel {

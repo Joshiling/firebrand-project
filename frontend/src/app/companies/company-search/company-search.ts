@@ -57,6 +57,8 @@ export class CompanySearch {
   private lastSubmittedQuery = '';
   private submittedFilters: SearchFilters = {};
   private lastRequestedKey = '';
+  private previousStatusSelection = [''];
+  private previousTypeSelection = [''];
 
   protected readonly pageSize = 10;
   protected readonly statusOptions = statusOptions;
@@ -69,8 +71,8 @@ export class CompanySearch {
       nonNullable: true,
       validators: [Validators.required, requiredTrimmed],
     }),
-    companyStatuses: new FormControl<string[]>([], { nonNullable: true }),
-    companyTypes: new FormControl<string[]>([], { nonNullable: true }),
+    companyStatuses: new FormControl<string[]>([''], { nonNullable: true }),
+    companyTypes: new FormControl<string[]>([''], { nonNullable: true }),
     country: new FormControl('', { nonNullable: true }),
   });
   protected readonly visibleStatuses = computed(() => this.matchingOptions(
@@ -97,6 +99,34 @@ export class CompanySearch {
 
   protected filterLabel(value: string): string {
     return value.replace(/([a-z])([A-Z])/g, '$1 $2');
+  }
+
+  protected changeStatusSelection(): void {
+    this.previousStatusSelection = this.reconcileSelection(
+      this.searchForm.controls.companyStatuses, this.previousStatusSelection,
+    );
+  }
+
+  protected changeTypeSelection(): void {
+    this.previousTypeSelection = this.reconcileSelection(
+      this.searchForm.controls.companyTypes, this.previousTypeSelection,
+    );
+  }
+
+  protected clearFilters(): void {
+    this.searchForm.patchValue({ companyStatuses: [''], companyTypes: [''], country: '' });
+    this.previousStatusSelection = [''];
+    this.previousTypeSelection = [''];
+    this.statusFilter.set('');
+    this.typeFilter.set('');
+  }
+
+  private reconcileSelection(control: FormControl<string[]>, previous: string[]): string[] {
+    const selected = control.value;
+    if (selected.includes('') && selected.length > 1) {
+      control.setValue(previous.includes('') ? selected.filter(Boolean) : ['']);
+    }
+    return control.value;
   }
 
   private matchingOptions<T extends string>(options: readonly T[], text: string, selected: readonly string[]): readonly T[] {
@@ -150,8 +180,11 @@ export class CompanySearch {
       };
       const requestKey = this.requestKey(query, page, filters);
 
-      this.searchForm.setValue({ query, companyStatuses: [...(filters.companyStatuses ?? [])],
-        companyTypes: [...(filters.companyTypes ?? [])], country: filters.country ?? '' });
+      const companyStatuses = filters.companyStatuses?.length ? [...filters.companyStatuses] : [''];
+      const companyTypes = filters.companyTypes?.length ? [...filters.companyTypes] : [''];
+      this.searchForm.setValue({ query, companyStatuses, companyTypes, country: filters.country ?? '' });
+      this.previousStatusSelection = companyStatuses;
+      this.previousTypeSelection = companyTypes;
       this.lastSubmittedQuery = query;
       this.submittedFilters = filters;
       this.submittedQuery.set(query);
@@ -206,9 +239,11 @@ export class CompanySearch {
   }
 
   private selectedFilters(statuses: string[], types: string[], country: string): SearchFilters {
+    const selectedStatuses = statuses.filter(Boolean);
+    const selectedTypes = types.filter(Boolean);
     return {
-      ...(statuses.length ? { companyStatuses: [...statuses] } : {}),
-      ...(types.length ? { companyTypes: [...types] } : {}),
+      ...(selectedStatuses.length ? { companyStatuses: selectedStatuses } : {}),
+      ...(selectedTypes.length ? { companyTypes: selectedTypes } : {}),
       ...(country ? { country } : {}),
     };
   }

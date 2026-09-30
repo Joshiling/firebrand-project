@@ -39,12 +39,15 @@
     }
     <details class="filters">
       <summary>Filters</summary>
+      <button class="filters__clear" type="button" (click)="clearFilters()">Clear all</button>
       <div class="filters__grid">
         <div>
           <label for="filter-status">Company status</label>
           <input class="filter-option-search" type="search" aria-label="Find company status" placeholder="Find status" autocomplete="off"
             [value]="statusFilter()" (input)="statusFilter.set($any($event.target).value)" />
-          <select id="filter-status" formControlName="companyStatuses" multiple size="5" aria-label="Company status, select multiple">
+          <select id="filter-status" formControlName="companyStatuses" multiple size="5" aria-label="Company status, select multiple"
+            (change)="changeStatusSelection()">
+            <option value="">Any company status</option>
             @for (status of visibleStatuses(); track status) {
               <option [value]="status">{{ filterLabel(status) }}</option>
             }
@@ -57,7 +60,9 @@
           <label for="filter-type">Company type</label>
           <input class="filter-option-search" type="search" aria-label="Find company type" placeholder="Find type" autocomplete="off"
             [value]="typeFilter()" (input)="typeFilter.set($any($event.target).value)" />
-          <select id="filter-type" formControlName="companyTypes" multiple size="5" aria-label="Company type, select multiple">
+          <select id="filter-type" formControlName="companyTypes" multiple size="5" aria-label="Company type, select multiple"
+            (change)="changeTypeSelection()">
+            <option value="">Any company type</option>
             @for (type of visibleTypes(); track type) {
               <option [value]="type">{{ filterLabel(type) }}</option>
             }
