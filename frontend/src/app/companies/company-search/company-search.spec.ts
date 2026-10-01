@@ -154,7 +154,7 @@ describe('CompanySearch', () => {
     submit();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('We could not complete the search');
+    expect(fixture.nativeElement.textContent).toContain('Cannot reach the server');
   });
 
   it('requests the next page using the submitted query', async () => {
@@ -436,7 +436,7 @@ describe('CompanySearch', () => {
     submit();
     await finishRequest();
     expect(fixture.nativeElement.textContent).toContain('Tesco PLC');
-    expect(fixture.nativeElement.textContent).not.toContain('We could not complete the search');
+    expect(fixture.nativeElement.textContent).not.toContain('Cannot reach the server');
   });
 
   it('cancels an older search and ignores its late response', async () => {
