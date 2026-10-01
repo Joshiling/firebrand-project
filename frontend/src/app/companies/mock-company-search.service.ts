@@ -14,15 +14,18 @@ import { MOCK_COMPANY_HISTORY, MOCK_COMPANY_PROFILES } from './mock-companies';
 
 @Injectable()
 export class MockCompanySearchService extends CompanySearchService {
+  // Returns the small set of filters supported by the local fixtures.
   override getFilterOptions(): Observable<CompanyFilterOptions> {
     return of({ companyStatuses: ['Active', 'Dissolved'], companyTypes: ['Ltd', 'Plc'], countries: ['England'] });
   }
 
+  // Looks up saved profile versions in the local fixtures.
   override getHistory(registrationNumber: string): Observable<readonly CompanyHistoryEntry[]> {
     const normalizedNumber = registrationNumber.trim().toLocaleUpperCase();
     return of(MOCK_COMPANY_HISTORY[normalizedNumber] ?? []).pipe(delay(200));
   }
 
+  // Resolves a company profile from fixture data without calling the API.
   override getDetails(registrationNumber: string): Observable<CompaniesHouseCompanyProfile | null> {
     const normalizedNumber = registrationNumber.trim().toLocaleLowerCase();
     const profile =
@@ -34,6 +37,7 @@ export class MockCompanySearchService extends CompanySearchService {
     return of(profile).pipe(delay(250));
   }
 
+  // Filters local profiles before counting and slicing the requested page.
   override search(request: CompanySearchRequest): Observable<CompanySearchPage> {
     const query = request.query.trim().toLocaleLowerCase();
     const page = Math.max(1, request.page);

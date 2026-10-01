@@ -91,10 +91,12 @@ interface BackendCompanyHistoryEntry {
 export class HttpCompanySearchService extends CompanySearchService {
   private readonly http = inject(HttpClient);
 
+  // Loads the filter values accepted by the backend search endpoints.
   override getFilterOptions(): Observable<CompanyFilterOptions> {
     return this.http.get<CompanyFilterOptions>('/search/filters');
   }
 
+  // Selects the name or number endpoint and pages the returned company summaries.
   override search(request: CompanySearchRequest): Observable<CompanySearchPage> {
     const query = request.query.trim();
     const page = Math.max(1, request.page);
@@ -131,6 +133,7 @@ export class HttpCompanySearchService extends CompanySearchService {
     );
   }
 
+  // Loads a company profile, treating only HTTP 404 as a missing company.
   override getDetails(registrationNumber: string): Observable<CompaniesHouseCompanyProfile | null> {
     const encodedNumber = encodeURIComponent(registrationNumber.trim());
 
@@ -147,6 +150,7 @@ export class HttpCompanySearchService extends CompanySearchService {
     );
   }
 
+  // Loads saved profile versions, returning an empty list when no history exists.
   override getHistory(registrationNumber: string): Observable<readonly CompanyHistoryEntry[]> {
     const encodedNumber = encodeURIComponent(registrationNumber.trim());
 
@@ -175,6 +179,7 @@ export class HttpCompanySearchService extends CompanySearchService {
       );
   }
 
+  // Converts a backend search result to the summary displayed in results.
   private toSummary(company: BackendCompanySearch): CompanySummary {
     return {
       name: company.name,
@@ -185,6 +190,7 @@ export class HttpCompanySearchService extends CompanySearchService {
     };
   }
 
+  // Translates the backend's mixed JSON field names into the profile view model.
   private toProfile(company: BackendCompany): CompaniesHouseCompanyProfile {
     return {
       accounts: company.accounts

@@ -16,6 +16,7 @@ export class CompanyResults {
   readonly companies = input.required<readonly CompanySummary[]>();
   readonly searchParams = input<Params>({});
 
+  // Joins available address fields for display, falling back when none exist.
   protected formatAddress(company: CompanySummary): string {
     const address = company.registeredAddress;
     if (!address) {
@@ -32,10 +33,12 @@ export class CompanyResults {
     return parts.length ? parts.join(', ') : 'Not available';
   }
 
+  // Presents the backend status with an initial capital letter.
   protected displayStatus(status: string): string {
     return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
   }
 
+  // Selects the visual treatment for active, inactive, and other statuses.
   protected statusTone(status: string): 'active' | 'inactive' | 'neutral' {
     const normalized = status.toLowerCase();
     if (normalized === 'active') {
