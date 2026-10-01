@@ -12,6 +12,7 @@ class SearchServiceStub extends CompanySearchService {
     companyTypes: ['PrivateUnlimited', 'Ltd', 'Plc', 'LimitedPartnership'],
     countries: ['England', 'GreatBritain'],
   };
+  // Supplies selectable filter metadata or a test-controlled response.
   override getFilterOptions(): Observable<CompanyFilterOptions> {
     return this.optionsResponse ?? of(this.options);
   }
@@ -31,14 +32,17 @@ class SearchServiceStub extends CompanySearchService {
   };
   shouldFail = false;
 
+  // Details are outside the search component's responsibility.
   override getDetails() {
     return of(null);
   }
 
+  // History is outside the search component's responsibility.
   override getHistory() {
     return of([]);
   }
 
+  // Records searches and optionally simulates a delayed service failure.
   override readonly search = vi.fn(
     (request: CompanySearchRequest): Observable<CompanySearchPage> => {
       if (this.shouldFail) {
@@ -73,6 +77,7 @@ describe('CompanySearch', () => {
     vi.useRealTimers();
   });
 
+  // Types into the search control and notifies Angular of the input change.
   function setQuery(value: string): void {
     const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
     input.value = value;
@@ -80,16 +85,19 @@ describe('CompanySearch', () => {
     fixture.detectChanges();
   }
 
+  // Submits the search form through the same event as the UI.
   function submit(): void {
     const form = fixture.nativeElement.querySelector('form') as HTMLFormElement;
     form.dispatchEvent(new Event('submit'));
     fixture.detectChanges();
   }
 
+  // Finds the requested filter's enclosing dropdown.
   function picker(kind: 'status' | 'type'): HTMLDetailsElement {
     return fixture.nativeElement.querySelector(`#filter-${kind}`)?.closest('details') as HTMLDetailsElement;
   }
 
+  // Opens a filter picker and selects an option by its visible label.
   function choose(kind: 'status' | 'type', label: string): void {
     const dropdown = picker(kind);
     dropdown.open = true;
@@ -102,6 +110,7 @@ describe('CompanySearch', () => {
     expect(dropdown.open).toBe(false);
   }
 
+  // Advances the stub response delay and updates the rendered search view.
   async function finishRequest(): Promise<void> {
     await vi.advanceTimersByTimeAsync(10);
     fixture.detectChanges();

@@ -91,6 +91,7 @@ describe('HttpCompanySearchService', () => {
   it('maps backend details into the Companies House profile shape used by the view', async () => {
     const resultPromise = firstValueFrom(service.getDetails('00002065'));
     const request = http.expectOne('/registry_id/00002065');
+    // Top-level fields are camelCase, but reused nested backend DTOs are snake_case.
     request.flush({
       name: 'LLOYDS BANK PLC',
       registryId: '00002065',
@@ -224,6 +225,7 @@ describe('HttpCompanySearchService', () => {
     await expect(resultPromise).resolves.toBeNull();
   });
 
+  // Client, rate-limit, and server errors must not be mistaken for "not found".
   it.each([400, 429, 500, 502, 503])('propagates HTTP %i for search and details', async (status) => {
     const operations: Observable<unknown>[] = [service.search({ query: 'Tesco', page: 1, pageSize: 10 }), service.getDetails('00445790')];
     for (const operation of operations) {
@@ -244,6 +246,7 @@ describe('HttpCompanySearchService', () => {
     await expect(recovered).resolves.toMatchObject({ company_name: 'TESCO', company_number: '00445790' });
   });
 
+  // Ampersands, slashes, apostrophes, plus signs, and Unicode stay in one value.
   it.each(['A & B + C', "O'Brien / Trading", 'Caf\u00e9'])('encodes query %s as one parameter', async (query) => {
     const result = firstValueFrom(service.search({ query: ` ${query} `, page: 1, pageSize: 10 }));
     const request = http.expectOne((candidate) => candidate.url === '/name');

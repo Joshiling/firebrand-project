@@ -19,10 +19,12 @@ class DetailsServiceStub extends CompanySearchService {
   shouldFailHistory = false;
   history: readonly CompanyHistoryEntry[] = [];
 
+  // Keeps filter loading out of profile-focused tests.
   override getFilterOptions(): Observable<CompanyFilterOptions> {
     return of({ companyStatuses: [], companyTypes: [], countries: [] });
   }
 
+  // Simulates a successful, missing, or failed profile request.
   override readonly getDetails = vi.fn(
     (registrationNumber: string): Observable<CompaniesHouseCompanyProfile | null> => {
       if (this.shouldFail) {
@@ -33,10 +35,12 @@ class DetailsServiceStub extends CompanySearchService {
     },
   );
 
+  // Keeps search results out of profile-focused tests.
   override search(_request: CompanySearchRequest): Observable<CompanySearchPage> {
     return of({ items: [], totalResults: 0, page: 1, pageSize: 10 });
   }
 
+  // Simulates saved history or a history-only failure.
   override readonly getHistory = vi.fn((): Observable<readonly CompanyHistoryEntry[]> => {
     if (this.shouldFailHistory) {
       return throwError(() => new Error('History unavailable'));
@@ -62,6 +66,7 @@ describe('CompanyDetails', () => {
     service = TestBed.inject(CompanySearchService) as DetailsServiceStub;
   });
 
+  // Navigates to a company and returns the rendered details element.
   async function navigate(url: string): Promise<HTMLElement> {
     await harness.navigateByUrl(url, CompanyDetails);
     harness.detectChanges();
@@ -201,6 +206,7 @@ describe('CompanyDetails', () => {
     expect(element.querySelector('.back-link')?.getAttribute('href')).toBe('/');
   });
 
+  // [API date, expected display]: valid leap day, impossible dates, and unknown text.
   it.each([
     ['2024-02-29', '29 Feb 2024'],
     ['2023-02-29', '2023-02-29'],
