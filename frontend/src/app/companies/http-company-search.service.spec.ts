@@ -19,6 +19,15 @@ describe('HttpCompanySearchService', () => {
 
   afterEach(() => http.verify());
 
+  it('loads supported filter values from the API', async () => {
+    const resultPromise = firstValueFrom(service.getFilterOptions());
+    const request = http.expectOne('/search/filters');
+    expect(request.request.method).toBe('GET');
+    const options = { companyStatuses: ['Active'], companyTypes: ['Ltd'], countries: ['Wales'] };
+    request.flush(options);
+    await expect(resultPromise).resolves.toEqual(options);
+  });
+
   it('searches by company name and maps a page of backend results', async () => {
     const resultPromise = firstValueFrom(
       service.search({ query: ' Lloyds ', page: 2, pageSize: 1 }),
@@ -60,6 +69,22 @@ describe('HttpCompanySearchService', () => {
     const request = http.expectOne('/registry_id?registry_id=SC123456');
     request.flush([]);
 
+    await expect(resultPromise).resolves.toMatchObject({ totalResults: 0 });
+  });
+
+  it('sends repeated enum filters and the country filter to the backend', async () => {
+    const resultPromise = firstValueFrom(service.search({
+      query: ' Lloyds ', page: 1, pageSize: 10,
+      companyStatuses: ['Active', 'Dissolved'], companyTypes: ['Ltd', 'Plc'],
+      country: 'GreatBritain',
+    }));
+    const request = http.expectOne((candidate) => candidate.url === '/name');
+
+    expect(request.request.params.getAll('company_status')).toEqual(['Active', 'Dissolved']);
+    expect(request.request.params.getAll('company_type')).toEqual(['Ltd', 'Plc']);
+    expect(request.request.params.has('city')).toBe(false);
+    expect(request.request.params.get('country')).toBe('GreatBritain');
+    request.flush([]);
     await expect(resultPromise).resolves.toMatchObject({ totalResults: 0 });
   });
 

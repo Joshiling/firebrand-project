@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable, delay, of } from 'rxjs';
 import { CompaniesHouseCompanyProfile, mapCompaniesHouseProfile } from './companies-house-profile';
 import {
+  CompanyFilterOptions,
   CompanyHistoryEntry,
   CompanySearchPage,
   CompanySearchRequest,
@@ -13,6 +14,10 @@ import { MOCK_COMPANY_HISTORY, MOCK_COMPANY_PROFILES } from './mock-companies';
 
 @Injectable()
 export class MockCompanySearchService extends CompanySearchService {
+  override getFilterOptions(): Observable<CompanyFilterOptions> {
+    return of({ companyStatuses: ['Active', 'Dissolved'], companyTypes: ['Ltd', 'Plc'], countries: ['England'] });
+  }
+
   override getHistory(registrationNumber: string): Observable<readonly CompanyHistoryEntry[]> {
     const normalizedNumber = registrationNumber.trim().toLocaleUpperCase();
     return of(MOCK_COMPANY_HISTORY[normalizedNumber] ?? []).pipe(delay(200));

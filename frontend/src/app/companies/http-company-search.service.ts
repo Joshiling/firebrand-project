@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { catchError, map, Observable, of, throwError } from 'rxjs';
 import { CompaniesHouseCompanyProfile } from './companies-house-profile';
 import {
+  CompanyFilterOptions,
   CompanyHistoryEntry,
   CompanySearchPage,
   CompanySearchRequest,
@@ -89,6 +90,10 @@ interface BackendCompanyHistoryEntry {
 export class HttpCompanySearchService extends CompanySearchService {
   private readonly http = inject(HttpClient);
 
+  override getFilterOptions(): Observable<CompanyFilterOptions> {
+    return this.http.get<CompanyFilterOptions>('/search/filters');
+  }
+
   override search(request: CompanySearchRequest): Observable<CompanySearchPage> {
     const query = request.query.trim();
     const page = Math.max(1, request.page);
@@ -96,7 +101,16 @@ export class HttpCompanySearchService extends CompanySearchService {
     const isRegistrationNumber = classifyCompanyQuery(query) === 'registrationNumber';
     const endpoint = isRegistrationNumber ? '/registry_id' : '/name';
     const parameterName = isRegistrationNumber ? 'registry_id' : 'name';
-    const params = new HttpParams().set(parameterName, query);
+    let params = new HttpParams().set(parameterName, query);
+    for (const status of request.companyStatuses ?? []) {
+      params = params.append('company_status', status);
+    }
+    for (const type of request.companyTypes ?? []) {
+      params = params.append('company_type', type);
+    }
+    if (request.country) {
+      params = params.set('country', request.country);
+    }
 
     return this.http.get<readonly BackendCompanySearch[]>(endpoint, { params }).pipe(
       map((companies) => {

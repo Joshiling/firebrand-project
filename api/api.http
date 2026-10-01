@@ -1,11 +1,26 @@
 @api_HostAddress = http://localhost:5088
 
+GET {{api_HostAddress}}/search/filters
+Accept: application/json
+
+###
+
 GET {{api_HostAddress}}/registry_id?registry_id=00123456
 Accept: application/json
 
 ###
 
+GET {{api_HostAddress}}/registry_id?registry_id=00123456&company_status=Active&company_type=Ltd&city=London&country=England
+Accept: application/json
+
+###
+
 GET {{api_HostAddress}}/name?name=Acme%20Holdings
+Accept: application/json
+
+###
+
+GET {{api_HostAddress}}/name?name=Acme%20Holdings&company_status=Active&company_type=Ltd&city=London&country=England
 Accept: application/json
 
 ###

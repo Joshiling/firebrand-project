@@ -3,7 +3,12 @@ import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { Observable, of, throwError } from 'rxjs';
 import { CompaniesHouseCompanyProfile } from '../companies-house-profile';
-import { CompanyHistoryEntry, CompanySearchPage, CompanySearchRequest } from '../company.model';
+import {
+  CompanyFilterOptions,
+  CompanyHistoryEntry,
+  CompanySearchPage,
+  CompanySearchRequest,
+} from '../company.model';
 import { CompanySearchService } from '../company-search.service';
 import { MOCK_COMPANY_HISTORY, MOCK_COMPANY_PROFILES } from '../mock-companies';
 import { CompanyDetails } from './company-details';
@@ -13,6 +18,10 @@ class DetailsServiceStub extends CompanySearchService {
   shouldFail = false;
   shouldFailHistory = false;
   history: readonly CompanyHistoryEntry[] = [];
+
+  override getFilterOptions(): Observable<CompanyFilterOptions> {
+    return of({ companyStatuses: [], companyTypes: [], countries: [] });
+  }
 
   override readonly getDetails = vi.fn(
     (registrationNumber: string): Observable<CompaniesHouseCompanyProfile | null> => {

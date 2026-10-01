@@ -54,7 +54,8 @@ h2 {
   line-height: 1.3;
 }
 
-label {
+label,
+.filter-label {
   display: block;
   margin-bottom: 0.5rem;
   color: var(--color-text);
@@ -68,6 +69,7 @@ label {
 }
 
 input,
+select,
 button {
   min-height: 3rem;
   border-radius: 0.5rem;
@@ -88,7 +90,8 @@ button {
   pointer-events: none;
 }
 
-input {
+input,
+select {
   width: 100%;
   min-width: 0;
   padding: 0.75rem 0.875rem 0.75rem 2.75rem;
@@ -105,6 +108,7 @@ input::placeholder {
 }
 
 input:focus,
+select:focus,
 button:focus-visible {
   outline: var(--focus-ring);
   outline-offset: var(--focus-offset);
@@ -157,6 +161,149 @@ button:disabled {
   font-weight: 700;
 }
 
+.filter-load-error {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  color: var(--color-danger);
+}
+
+.filters {
+  position: relative;
+  margin-top: 1.25rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 1rem;
+}
+
+.filters > summary {
+  width: fit-content;
+  min-height: 2rem;
+  align-content: center;
+  color: var(--color-action);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.filters__clear {
+  position: absolute;
+  top: 1rem;
+  right: 0;
+  min-width: 0;
+  min-height: 2rem;
+  padding: 0.25rem 0.5rem;
+  color: var(--color-action);
+  background: transparent;
+  border-color: transparent;
+  font-size: 0.875rem;
+}
+
+.filters__clear:hover:not(:disabled) {
+  color: var(--color-action-hover);
+  background: var(--color-border);
+  border-color: transparent;
+}
+
+.filters__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.filters__grid input,
+.filters__grid select {
+  width: 100%;
+  padding: 0.65rem;
+}
+
+.filter-picker {
+  position: relative;
+}
+
+.filter-picker summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.65rem 0.875rem;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.filter-picker summary::-webkit-details-marker {
+  display: none;
+}
+
+.filter-picker summary:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.filter-picker__value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-picker summary ng-icon {
+  flex: none;
+}
+
+.filter-picker__menu {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 0.25rem);
+  width: 100%;
+  padding: 0.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 0.5rem;
+  box-shadow: 0 0.5rem 1rem rgb(20 31 50 / 12%);
+}
+
+.filter-picker__menu input {
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.filter-picker__list {
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.filter-picker__list button {
+  justify-content: space-between;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.5rem;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  border-radius: 0.25rem;
+  font-weight: 400;
+  text-align: left;
+}
+
+.filter-picker__list button:hover:not(:disabled) {
+  color: var(--color-text);
+  background: var(--color-border);
+}
+
+.filter-picker__list button[aria-pressed='true'],
+.filter-picker__list button[aria-pressed='true']:hover:not(:disabled) {
+  color: #ffffff;
+  background: var(--color-action);
+}
+
 .results-panel {
   min-width: 0;
   margin-top: 2rem;
@@ -186,7 +333,8 @@ button:disabled {
 }
 
 @media (max-width: 30rem) {
-  .search-controls {
+  .search-controls,
+  .filters__grid {
     grid-template-columns: 1fr;
   }
 

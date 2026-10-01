@@ -20,6 +20,18 @@ The `registry_id` parameter is required after trimming. It must remain a string 
 
 The frontend currently identifies likely company numbers with either eight digits or two letters followed by six digits. The backend must validate the value independently.
 
+Optional filters may be added to the same request:
+
+```http
+GET /registry_id?registry_id=00002065&company_status=Active&company_type=Plc&city=London&country=England
+```
+
+`company_status` and `company_type` are enum query parameters. Valid status values are `Active`, `Dissolved`, `Open`, `Closed`, `ConvertedClosed`, `Receivership`, `Administration`, `Liquidation`, `InsolvencyProceedings`, `VoluntaryArrangement`, `Registered`, and `Removed`. Valid type values are `PrivateUnlimited`, `Ltd`, `Plc`, `OldPublicCompany`, `PrivateLimitedGuarantorNscLimitedExemption`, `LimitedPartnership`, `PrivateLimitedGuarantorNsc`, `ConvertedOrClosed`, `PrivateUnlimitedNsc`, `PrivateLimitedSharesSection30Exemption`, `ProtectedCellCompany`, `AssuranceCompany`, `OverseaCompany`, `Eeig`, `IcvcSecurities`, `IcvcWarrant`, `IcvcUmbrella`, `RegisteredSocietyNonJurisdictional`, `IndustrialAndProvidentSociety`, `NorthernIreland`, `NorthernIrelandOther`, `RoyalCharter`, `InvestmentCompanyWithVariableCapital`, `UnregisteredCompany`, `LimitedLiabilityPartnership`, `Other`, `EuropeanPublicLimitedLiabilityCompanySe`, `UkEstablishment`, and `ScottishPartnership`.
+
+Repeat a parameter to select multiple statuses or types; comma-separated enum values are not accepted. Multiple values within one filter are alternatives; different filters combine with AND semantics. `city` is a case-insensitive exact match against the registered-office `locality` field, not the formatted address. `country` is an enum matched against the registered-office `country` field. Missing locality/country values do not match their respective filters. The enum values map to the corresponding Companies House API codes.
+
+Supported `country` enum values are `Wales`, `England`, `Scotland`, `GreatBritain`, `NotSpecified`, `UnitedKingdom`, and `NorthernIreland`.
+
 ### Successful response
 
 Return `200 OK` with a JSON list of matching `Company` results. An exact registration number will normally produce zero or one item.
@@ -52,6 +64,12 @@ GET /name?name=Lloyds
 
 The `name` parameter is required after trimming. URL-encode it rather than concatenating unescaped user input into a URL.
 
+The optional `company_status`, `company_type`, `city`, and `country` filters are passed to the Companies House advanced company search endpoint when at least one is supplied. Status and type accept repeated enum parameters. `city` matches the registered-office locality exactly, and `country` is a registered-office country enum. Since Companies House exposes only a broad `location` search parameter, the backend also verifies returned locality/country fields before returning results. Filtered requests return up to the first 100 upstream candidates.
+
+```http
+GET /name?name=Lloyds&company_status=Active&company_type=Plc&city=London&country=England
+```
+
 ### Successful response
 
 Return `200 OK` with a JSON list of matching `Company` results using the same item shape as the registration-number search.
@@ -72,7 +90,7 @@ Return `200 OK` with a JSON list of matching `Company` results using the same it
 ]
 ```
 
-Return `200 OK` with `[]` when no companies match. The backend requests the first 100 Companies House matches to stay within the upstream search window. The Angular MVP paginates that bounded list locally at 10 results per page.
+Return `200 OK` with `[]` when no companies match. Unfiltered searches use the standard Companies House search endpoint and return the first 100 matches. Filtered name searches use advanced search and return up to 100 matching items. The Angular MVP paginates the returned list locally at 10 results per page.
 
 ## Company details
 

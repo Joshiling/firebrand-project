@@ -5,7 +5,7 @@
         <h3>
           <a
             [routerLink]="['/companies', company.registrationNumber]"
-            [queryParams]="{ q: searchQuery(), page: searchPage() }"
+            [queryParams]="searchParams()"
           >
             <span>{{ company.name }}</span>
             <ng-icon name="lucideArrowUpRight" size="18" aria-hidden="true" />

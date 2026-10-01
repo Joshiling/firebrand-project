@@ -37,6 +37,101 @@
         Enter a company name or registration number.
       </p>
     }
+    @if (filtersFailed()) {
+      <div class="filter-load-error" role="alert">
+        <span>Could not load search filters.</span>
+        <button type="button" (click)="retryFilterOptions()">Retry</button>
+      </div>
+    } @else if (!filterOptions()) {
+      <p class="hint" role="status">Loading search filters...</p>
+    }
+    @if (filterOptions()) {
+    <details class="filters">
+      <summary>Filters</summary>
+      <button class="filters__clear" type="button" (click)="clearFilters()">Clear all</button>
+      <div class="filters__grid">
+        <div>
+          <span class="filter-label" id="filter-status-label">Company status</span>
+          <details class="filter-picker" #statusPicker (toggle)="closeOtherPicker(statusPicker)">
+            <summary id="filter-status" aria-labelledby="filter-status-label filter-status"
+              [title]="selectionLabel(searchForm.controls.companyStatuses.value, 'Any company status')">
+              <span class="filter-picker__value">{{ selectionLabel(searchForm.controls.companyStatuses.value, 'Any company status') }}</span>
+              <ng-icon name="lucideChevronDown" size="18" aria-hidden="true" />
+            </summary>
+            <div class="filter-picker__menu">
+              <input type="search" aria-label="Find company status" placeholder="Find status" autocomplete="off"
+                [value]="statusFilter()" (input)="statusFilter.set($any($event.target).value)" (keydown.enter)="$event.preventDefault()" />
+              <div class="filter-picker__list" role="group" aria-label="Company status options">
+                <button type="button" [attr.aria-pressed]="searchForm.controls.companyStatuses.value.includes('')"
+                  (click)="selectStatus('', statusPicker)">
+                  Any company status
+                  @if (searchForm.controls.companyStatuses.value.includes('')) {
+                    <ng-icon name="lucideCheck" size="16" aria-hidden="true" />
+                  }
+                </button>
+                @for (status of visibleStatuses(); track status) {
+                  <button type="button" [attr.aria-pressed]="searchForm.controls.companyStatuses.value.includes(status)"
+                    (click)="selectStatus(status, statusPicker)">
+                    {{ filterLabel(status) }}
+                    @if (searchForm.controls.companyStatuses.value.includes(status)) {
+                      <ng-icon name="lucideCheck" size="16" aria-hidden="true" />
+                    }
+                  </button>
+                }
+                @if (!visibleStatuses().length) {
+                  <p class="hint">No matching statuses.</p>
+                }
+              </div>
+            </div>
+          </details>
+        </div>
+        <div>
+          <span class="filter-label" id="filter-type-label">Company type</span>
+          <details class="filter-picker" #typePicker (toggle)="closeOtherPicker(typePicker)">
+            <summary id="filter-type" aria-labelledby="filter-type-label filter-type"
+              [title]="selectionLabel(searchForm.controls.companyTypes.value, 'Any company type')">
+              <span class="filter-picker__value">{{ selectionLabel(searchForm.controls.companyTypes.value, 'Any company type') }}</span>
+              <ng-icon name="lucideChevronDown" size="18" aria-hidden="true" />
+            </summary>
+            <div class="filter-picker__menu">
+              <input type="search" aria-label="Find company type" placeholder="Find type" autocomplete="off"
+                [value]="typeFilter()" (input)="typeFilter.set($any($event.target).value)" (keydown.enter)="$event.preventDefault()" />
+              <div class="filter-picker__list" role="group" aria-label="Company type options">
+                <button type="button" [attr.aria-pressed]="searchForm.controls.companyTypes.value.includes('')"
+                  (click)="selectType('', typePicker)">
+                  Any company type
+                  @if (searchForm.controls.companyTypes.value.includes('')) {
+                    <ng-icon name="lucideCheck" size="16" aria-hidden="true" />
+                  }
+                </button>
+                @for (type of visibleTypes(); track type) {
+                  <button type="button" [attr.aria-pressed]="searchForm.controls.companyTypes.value.includes(type)"
+                    (click)="selectType(type, typePicker)">
+                    {{ filterLabel(type) }}
+                    @if (searchForm.controls.companyTypes.value.includes(type)) {
+                      <ng-icon name="lucideCheck" size="16" aria-hidden="true" />
+                    }
+                  </button>
+                }
+                @if (!visibleTypes().length) {
+                  <p class="hint">No matching types.</p>
+                }
+              </div>
+            </div>
+          </details>
+        </div>
+        <div>
+          <label for="filter-country">Registered office country</label>
+          <select id="filter-country" formControlName="country">
+            <option value="">Any country</option>
+            @for (country of filterOptions()?.countries ?? []; track country) {
+              <option [value]="country">{{ filterLabel(country) }}</option>
+            }
+          </select>
+        </div>
+      </div>
+    </details>
+    }
   </form>
 </section>
 
@@ -73,8 +168,7 @@
     @if (searchResult.items.length > 0) {
       <app-company-results
         [companies]="searchResult.items"
-        [searchQuery]="submittedQuery()"
-        [searchPage]="currentPage()"
+        [searchParams]="searchParams()"
       />
       @if (searchResult.totalResults > pageSize) {
         <app-pagination
