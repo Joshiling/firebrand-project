@@ -59,7 +59,9 @@ export class SearchLogs {
   protected readonly loading = signal(false);
   protected readonly requestFailed = signal(false);
 
+  // Keeps activity results synchronized with the current URL and request state.
   constructor() {
+    // A newer URL or retry cancels the previous read without terminating future retries on error.
     this.requests
       .pipe(
         switchMap((request) =>
@@ -91,6 +93,7 @@ export class SearchLogs {
     });
   }
 
+  // Validates the activity filter and searches from the first page.
   protected submitFilter(): void {
     this.filterForm.controls.query.markAsTouched();
     if (this.filterForm.invalid) {
@@ -106,25 +109,32 @@ export class SearchLogs {
     this.updateUrl(1, query);
   }
 
+  // Removes the filter and returns to the first page.
   protected clearFilter(): void {
     this.filterForm.controls.query.setValue('');
     this.updateUrl(1, '');
   }
 
+  // Pages through the submitted query, ignoring unsubmitted form edits.
   protected changePage(page: number): void {
     if (!this.loading()) {
+      // Paging belongs to the displayed result set, not an unsubmitted edit in the form.
       this.updateUrl(page, this.submittedQuery());
     }
   }
 
+  // Reloads the current activity page after a failed request.
   protected retry(): void {
     this.requestPage(this.currentPage(), this.submittedQuery());
   }
 
+  // Formats a saved timestamp or provides a fallback for invalid data.
   protected formatTimestamp(timestamp: string): string {
-    return this.dateFormatter.format(new Date(timestamp));
+    const date = new Date(timestamp);
+    return Number.isNaN(date.getTime()) ? 'Not available' : this.dateFormatter.format(date);
   }
 
+  // Turns an HTTP status into a short outcome label.
   protected statusLabel(status: number): string {
     if (status >= 200 && status < 300) {
       return 'Successful';
@@ -137,6 +147,7 @@ export class SearchLogs {
     return 'Failed';
   }
 
+  // Clears old activity and sends a new request to the cancellable stream.
   private requestPage(page: number, query: string): void {
     this.loading.set(true);
     this.requestFailed.set(false);
@@ -144,6 +155,7 @@ export class SearchLogs {
     this.requests.next({ page, query });
   }
 
+  // Stores the activity filter and page in the URL without adding history entries.
   private updateUrl(page: number, query: string): void {
     void this.router.navigate([], {
       relativeTo: this.route,

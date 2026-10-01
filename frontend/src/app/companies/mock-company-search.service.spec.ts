@@ -1,5 +1,7 @@
 import { firstValueFrom } from 'rxjs';
+import { CompanySearchRequest } from './company.model';
 import { MockCompanySearchService } from './mock-company-search.service';
+import { MOCK_COMPANY_PROFILES } from './mock-companies';
 
 describe('MockCompanySearchService', () => {
   let service: MockCompanySearchService;
@@ -13,18 +15,80 @@ describe('MockCompanySearchService', () => {
     vi.useRealTimers();
   });
 
-  async function completeSearch(query: string, page = 1, pageSize = 10) {
-    const resultPromise = firstValueFrom(service.search({ query, page, pageSize }));
+  // Advances the mock search delay before resolving its page of results.
+  async function completeSearch(query: string, page = 1, pageSize = 10, filters: Partial<CompanySearchRequest> = {}) {
+    const resultPromise = firstValueFrom(service.search({ query, page, pageSize, ...filters }));
     await vi.advanceTimersByTimeAsync(300);
     return resultPromise;
   }
 
+  it('applies status filters before counting and slicing a page', async () => {
+    const result = await completeSearch('northstar', 2, 2, { companyStatuses: ['Dissolved'] });
+
+    expect(result.totalResults).toBe(4);
+    expect(result.items.map((company) => company.registrationNumber)).toEqual(['01000012', '01000018']);
+    expect(result.items.every((company) => company.status === 'dissolved')).toBe(true);
+  });
+
+  // Each filter separately excludes the otherwise exact company-number match.
+  it.each([
+    { companyStatuses: ['Dissolved'] },
+    { companyTypes: ['Ltd'] },
+    { country: 'England' },
+  ])('excludes an exact number match that does not satisfy %j', async (filters) => {
+    const result = await completeSearch('00002065', 1, 10, filters);
+
+    expect(result.totalResults).toBe(0);
+    expect(result.items).toEqual([]);
+  });
+
+  it('uses OR within a selection and AND between filter dimensions', async () => {
+    const result = await completeSearch('northstar', 1, 30, {
+      companyStatuses: ['Active', 'Dissolved'], companyTypes: ['Plc', 'Ltd'],
+    });
+    expect(result.totalResults).toBe(23);
+
+    const excluded = await completeSearch('northstar', 1, 30, {
+      companyStatuses: ['Active'], companyTypes: ['Plc'],
+    });
+    expect(excluded.totalResults).toBe(0);
+  });
+
+  it('does not infer missing filter fields on sparse profiles', async () => {
+    const result = await completeSearch('beacon', 1, 10, { companyStatuses: ['Active'] });
+    expect(result.items).toEqual([]);
+  });
+
+  it.each(['lloyds', '00002065'])('matches all explicit dimensions for %s', async (query) => {
+    const address = MOCK_COMPANY_PROFILES.find((profile) => profile.company_number === '00002065')!.registered_office_address!;
+    const originalCountry = address.country;
+    // Supply a country for this case, then restore the shared fixture for later tests.
+    try {
+      address.country = 'England';
+      const result = await completeSearch(query, 1, 10, {
+        companyStatuses: ['Active'], companyTypes: ['Plc'], country: 'England',
+      });
+      expect(result.totalResults).toBe(1);
+      expect(result.items[0].registrationNumber).toBe('00002065');
+      const excluded = await completeSearch(query, 1, 10, { country: 'Scotland' });
+      expect(excluded.items).toEqual([]);
+    } finally {
+      if (originalCountry === undefined) {
+        delete address.country;
+      } else {
+        address.country = originalCountry;
+      }
+    }
+  });
+
+  // Advances the shorter mock profile delay before returning the full company.
   async function completeDetails(registrationNumber: string) {
     const resultPromise = firstValueFrom(service.getDetails(registrationNumber));
     await vi.advanceTimersByTimeAsync(250);
     return resultPromise;
   }
 
+  // Advances the mock history delay before returning recorded versions.
   async function completeHistory(registrationNumber: string) {
     const resultPromise = firstValueFrom(service.getHistory(registrationNumber));
     await vi.advanceTimersByTimeAsync(200);
@@ -111,5 +175,23 @@ describe('MockCompanySearchService', () => {
 
     expect(result.totalResults).toBe(0);
     expect(result.items).toEqual([]);
+  });
+
+  it('returns disjoint pages with stable totals, including an out-of-range page', async () => {
+    const pages = [];
+    for (const page of [1, 2, 3, 4]) {
+      pages.push(await completeSearch(' northstar ', page, 10));
+    }
+    expect(pages.map((page) => page.items.length)).toEqual([10, 10, 3, 0]);
+    expect(pages.map((page) => page.totalResults)).toEqual([23, 23, 23, 23]);
+    expect(new Set(pages.flatMap((page) => page.items.map((company) => company.registrationNumber))).size).toBe(23);
+  });
+
+  it('does not emit a delayed search after unsubscription', async () => {
+    const next = vi.fn();
+    const subscription = service.search({ query: 'Tesco', page: 1, pageSize: 10 }).subscribe(next);
+    subscription.unsubscribe();
+    await vi.advanceTimersByTimeAsync(300);
+    expect(next).not.toHaveBeenCalled();
   });
 });

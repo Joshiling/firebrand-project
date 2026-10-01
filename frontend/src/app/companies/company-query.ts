@@ -4,6 +4,7 @@ export type CompanyQueryKind = 'name' | 'registrationNumber';
 // Numbers stay as strings so leading zeroes and prefixes such as SC are never lost.
 const COMPANY_NUMBER_PATTERN = /^(?:\d{8}|[a-z]{2}\d{6})$/i;
 
+// Chooses exact-number search only for a complete UK registration number.
 export function classifyCompanyQuery(query: string): CompanyQueryKind {
   return COMPANY_NUMBER_PATTERN.test(query.trim()) ? 'registrationNumber' : 'name';
 }

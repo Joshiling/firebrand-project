@@ -1,9 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, of, Subject, throwError } from 'rxjs';
 import { CompaniesHouseCompanyProfile } from '../companies-house-profile';
-import { CompanyHistoryEntry, CompanySearchPage, CompanySearchRequest } from '../company.model';
+import {
+  CompanyFilterOptions,
+  CompanyHistoryEntry,
+  CompanySearchPage,
+  CompanySearchRequest,
+} from '../company.model';
 import { CompanySearchService } from '../company-search.service';
 import { MOCK_COMPANY_HISTORY, MOCK_COMPANY_PROFILES } from '../mock-companies';
 import { CompanyDetails } from './company-details';
@@ -14,6 +19,12 @@ class DetailsServiceStub extends CompanySearchService {
   shouldFailHistory = false;
   history: readonly CompanyHistoryEntry[] = [];
 
+  // Keeps filter loading out of profile-focused tests.
+  override getFilterOptions(): Observable<CompanyFilterOptions> {
+    return of({ companyStatuses: [], companyTypes: [], countries: [] });
+  }
+
+  // Simulates a successful, missing, or failed profile request.
   override readonly getDetails = vi.fn(
     (registrationNumber: string): Observable<CompaniesHouseCompanyProfile | null> => {
       if (this.shouldFail) {
@@ -24,10 +35,12 @@ class DetailsServiceStub extends CompanySearchService {
     },
   );
 
+  // Keeps search results out of profile-focused tests.
   override search(_request: CompanySearchRequest): Observable<CompanySearchPage> {
     return of({ items: [], totalResults: 0, page: 1, pageSize: 10 });
   }
 
+  // Simulates saved history or a history-only failure.
   override readonly getHistory = vi.fn((): Observable<readonly CompanyHistoryEntry[]> => {
     if (this.shouldFailHistory) {
       return throwError(() => new Error('History unavailable'));
@@ -53,6 +66,7 @@ describe('CompanyDetails', () => {
     service = TestBed.inject(CompanySearchService) as DetailsServiceStub;
   });
 
+  // Navigates to a company and returns the rendered details element.
   async function navigate(url: string): Promise<HTMLElement> {
     await harness.navigateByUrl(url, CompanyDetails);
     harness.detectChanges();
@@ -182,5 +196,55 @@ describe('CompanyDetails', () => {
     await navigate('/companies/SC123456');
 
     expect(service.getDetails).toHaveBeenCalledWith('SC123456');
+  });
+
+  it('refreshes Back context when Angular reuses the details component', async () => {
+    await navigate('/companies/00002065?q=Lloyds&page=2');
+    const element = await navigate('/companies/SC123456?q=River&page=3');
+    expect(element.querySelector('.back-link')?.getAttribute('href')).toBe('/?q=River&page=3');
+    await navigate('/companies/SC123456');
+    expect(element.querySelector('.back-link')?.getAttribute('href')).toBe('/');
+  });
+
+  // [API date, expected display]: valid leap day, impossible dates, and unknown text.
+  it.each([
+    ['2024-02-29', '29 Feb 2024'],
+    ['2023-02-29', '2023-02-29'],
+    ['2024-13-01', '2024-13-01'],
+    ['2024-01-00', '2024-01-00'],
+    ['unknown', 'unknown'],
+  ])('renders API date %s without inventing another calendar date', async (value, expected) => {
+    service.profile = { company_name: 'DATE TEST', company_number: '00000001', date_of_creation: value };
+    const element = await navigate('/companies/00000001');
+    expect(element.textContent).toContain(expected);
+  });
+
+  it('cancels stale detail requests and tears down the latest subscription', async () => {
+    const older = new Subject<CompaniesHouseCompanyProfile | null>();
+    const latest = new Subject<CompaniesHouseCompanyProfile | null>();
+    service.getDetails.mockReturnValueOnce(older).mockReturnValueOnce(latest);
+    await navigate('/companies/00002065');
+    const element = await navigate('/companies/SC123456');
+    expect(older.observed).toBe(false);
+    latest.next({ company_name: 'LATEST COMPANY', company_number: 'SC123456' });
+    older.next(service.profile);
+    harness.detectChanges();
+    expect(element.textContent).toContain('LATEST COMPANY');
+    expect(element.textContent).not.toContain('LLOYDS BANK PLC');
+    harness.fixture.destroy();
+    expect(latest.observed).toBe(false);
+  });
+
+  it('renders untrusted profile strings as text and leaves API references inert', async () => {
+    service.profile = {
+      company_name: '<img src=x onerror=alert(1)>', company_number: '00000001',
+      links: { self: 'javascript:alert(1)' },
+      can_file: false,
+    };
+    const element = await navigate('/companies/00000001');
+    expect(element.textContent).toContain('<img src=x onerror=alert(1)>');
+    expect(element.querySelector('img')).toBeNull();
+    expect(element.querySelector('a[href^="javascript:"]')).toBeNull();
+    expect(element.querySelector('details')?.open).toBe(false);
   });
 });

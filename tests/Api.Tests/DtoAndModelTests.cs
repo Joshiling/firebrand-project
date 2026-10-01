@@ -44,6 +44,42 @@ public sealed class DtoAndModelTests
     }
 
     [Fact]
+    public void AdvancedCompanySearchResponseDto_DeserializesAdvancedSearchItems()
+    {
+        const string json = """
+            {
+              "items": [
+                {
+                  "company_name": "LLOYDS BANK PLC",
+                  "company_number": "00002065",
+                  "company_status": "active",
+                  "company_type": "plc",
+                  "date_of_creation": "1865-04-20",
+                  "registered_office_address": {
+                    "address_line_1": "25 Gresham Street",
+                    "locality": "London",
+                    "country": "United Kingdom"
+                  }
+                }
+              ],
+              "total_results": 1
+            }
+            """;
+
+        var response = JsonSerializer.Deserialize<AdvancedCompanySearchResponseDto>(json, JsonOptions);
+
+        Assert.NotNull(response);
+        Assert.Equal(1, response.TotalResults);
+        var item = Assert.Single(response.Items!);
+        Assert.Equal("LLOYDS BANK PLC", item.CompanyName);
+        Assert.Equal("00002065", item.CompanyNumber);
+        Assert.Equal("active", item.CompanyStatus);
+        Assert.Equal("plc", item.CompanyType);
+        Assert.Equal(new DateOnly(1865, 4, 20), item.DateOfCreation);
+        Assert.Equal("United Kingdom", item.RegisteredOfficeAddress?.Country);
+    }
+
+    [Fact]
     public void CompanyProfileDto_DeserializesExternalRegistrationNumberAndForeignDetails()
     {
         // Arrange
@@ -99,6 +135,22 @@ public sealed class DtoAndModelTests
     }
 
       [Fact]
+      public void CompanySearchFilterEnums_MapToCompaniesHouseCodes()
+      {
+        Assert.Equal("active", CompanyStatusFilter.Active.ToCompaniesHouseValue());
+        Assert.Equal("voluntary-arrangement", CompanyStatusFilter.VoluntaryArrangement.ToCompaniesHouseValue());
+        Assert.Equal("ltd", CompanyTypeFilter.Ltd.ToCompaniesHouseValue());
+        Assert.Equal("private-limited-shares-section-30-exemption", CompanyTypeFilter.PrivateLimitedSharesSection30Exemption.ToCompaniesHouseValue());
+      }
+
+      [Fact]
+      public void CompanySearchFilterEnums_RejectUndefinedNumericValues()
+      {
+        Assert.False(Enum.IsDefined((CompanyStatusFilter)int.MaxValue));
+        Assert.False(Enum.IsDefined((CompanyTypeFilter)int.MaxValue));
+        }
+
+        [Fact]
       public void VersionHistoryModels_SerializeUsingContractFieldNames()
       {
         var company = new Company

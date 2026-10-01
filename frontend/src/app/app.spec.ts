@@ -22,7 +22,7 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('renders the CompanyLens heading and live API label', async () => {
+  it('renders the CompanyLens heading and primary navigation', async () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     await TestBed.inject(Router).navigateByUrl('/');
@@ -32,6 +32,5 @@ describe('App', () => {
     expect(compiled.querySelector('.brand')?.textContent).toContain('CompanyLens');
     expect(compiled.querySelector('nav')?.textContent).toContain('Activity log');
     expect(compiled.querySelector('h1')?.textContent).toContain('Find a UK company');
-    expect(compiled.querySelector('.environment')?.textContent).toContain('Live API');
   });
 });

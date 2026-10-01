@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Params, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideArrowUpRight } from '@ng-icons/lucide';
 import { CompanySummary } from '../company.model';
@@ -14,9 +14,9 @@ import { CompanySummary } from '../company.model';
 })
 export class CompanyResults {
   readonly companies = input.required<readonly CompanySummary[]>();
-  readonly searchQuery = input('');
-  readonly searchPage = input(1);
+  readonly searchParams = input<Params>({});
 
+  // Joins available address fields for display, falling back when none exist.
   protected formatAddress(company: CompanySummary): string {
     const address = company.registeredAddress;
     if (!address) {
@@ -33,10 +33,12 @@ export class CompanyResults {
     return parts.length ? parts.join(', ') : 'Not available';
   }
 
+  // Presents the backend status with an initial capital letter.
   protected displayStatus(status: string): string {
     return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
   }
 
+  // Selects the visual treatment for active, inactive, and other statuses.
   protected statusTone(status: string): 'active' | 'inactive' | 'neutral' {
     const normalized = status.toLowerCase();
     if (normalized === 'active') {

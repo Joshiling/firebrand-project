@@ -1,4 +1,9 @@
 {
+  "/search/filters": {
+    "target": "https://localhost:7097",
+    "secure": false,
+    "changeOrigin": true
+  },
   "/name": {
     "target": "https://localhost:7097",
     "secure": false,

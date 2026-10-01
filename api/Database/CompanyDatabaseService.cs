@@ -29,6 +29,7 @@ public sealed class CompanyDatabaseService(
         await EnsureSchemaAsync(connection, cancellationToken);
 
         var normalizedQuery = string.IsNullOrWhiteSpace(query) ? null : query.Trim();
+        // Parameters prevent SQL injection; escaping separately makes LIKE metacharacters literal.
         var queryPattern = normalizedQuery is null ? null : $"%{EscapeLikePattern(normalizedQuery)}%";
 
         await using var countCommand = connection.CreateCommand();
@@ -51,6 +52,7 @@ public sealed class CompanyDatabaseService(
         countCommand.Parameters.AddWithValue("@Query", (object?)queryPattern ?? DBNull.Value);
         var totalResults = Convert.ToInt32(await countCommand.ExecuteScalarAsync(cancellationToken));
 
+        // Keep raw upstream payloads out of this projection. IDs break timestamp ties between pages.
         await using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT
@@ -83,7 +85,8 @@ public sealed class CompanyDatabaseService(
             """;
         command.Parameters.AddWithValue("@Query", (object?)queryPattern ?? DBNull.Value);
         command.Parameters.AddWithValue("@PageSize", pageSize);
-        command.Parameters.AddWithValue("@Offset", (page - 1) * pageSize);
+        // Promote before multiplying: a valid Int32 page can exceed an Int32 row offset.
+        command.Parameters.AddWithValue("@Offset", ((long)page - 1) * pageSize);
 
         var items = new List<SearchLogEntry>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);

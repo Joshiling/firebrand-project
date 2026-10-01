@@ -66,18 +66,15 @@ export class CompanyDetails {
   protected readonly historyEntries = signal<readonly CompanyHistoryEntry[]>([]);
   protected readonly loadingHistory = signal(false);
   protected readonly historyFailed = signal(false);
-  protected readonly backQueryParams: Params;
+  protected readonly backQueryParams = signal<Params>({});
 
+  // Watches route changes and connects profile and history requests to the view.
   constructor() {
-    // Carry the originating search state into the Back link. Query parameters are optional so a
-    // directly opened company URL still works without inventing search values.
-    const queryParams = this.route.snapshot.queryParamMap;
-    const query = queryParams.get('q');
-    const page = queryParams.get('page');
-    this.backQueryParams = {
-      ...(query ? { q: query } : {}),
-      ...(page ? { page } : {}),
-    };
+    // Angular can reuse this component for another company or search context.
+    // Preserve every submitted filter; missing parameters leave a plain Back link for direct visits.
+    this.route.queryParams.pipe(takeUntilDestroyed()).subscribe((queryParams) => {
+      this.backQueryParams.set(queryParams);
+    });
 
     // As on the search page, switchMap discards an older in-flight lookup if the route changes.
     // Converting success and failure into values keeps all view-state updates in one subscription.
@@ -139,10 +136,12 @@ export class CompanyDetails {
       .subscribe((registrationNumber) => this.requestDetails(registrationNumber));
   }
 
+  // Reissues the current company lookup after a failure.
   protected retry(): void {
     this.requestDetails(this.currentRegistrationNumber);
   }
 
+  // Opens or closes history, loading it only on the first expansion.
   protected toggleHistory(): void {
     const expanded = !this.historyExpanded();
     this.historyExpanded.set(expanded);
@@ -152,10 +151,12 @@ export class CompanyDetails {
     }
   }
 
+  // Retries the current company's history lookup.
   protected retryHistory(): void {
     this.requestHistory();
   }
 
+  // Joins available registered-office fields for display.
   protected formatAddress(profile: CompaniesHouseCompanyProfile): string {
     const address = profile.registered_office_address;
     const parts = [
@@ -170,6 +171,7 @@ export class CompanyDetails {
     return parts.length ? parts.join(', ') : 'Not available';
   }
 
+  // Formats valid date-only values without changing invalid or unknown values.
   protected formatDate(value?: string): string {
     if (!value) {
       return 'Not available';
@@ -181,7 +183,15 @@ export class CompanyDetails {
     }
 
     // Build the date in UTC so a date-only API value cannot shift by one day in another timezone.
-    const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+    const year = Number(match[1]);
+    const month = Number(match[2]) - 1;
+    const day = Number(match[3]);
+    const date = new Date(0);
+    date.setUTCFullYear(year, month, day);
+    // Date normalizes impossible dates; retain the source instead of presenting invented data.
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month || date.getUTCDate() !== day) {
+      return value;
+    }
     return new Intl.DateTimeFormat('en-GB', {
       day: 'numeric',
       month: 'short',
@@ -190,6 +200,7 @@ export class CompanyDetails {
     }).format(date);
   }
 
+  // Describes whichever endpoints of a previous-name date range are present.
   protected formatDateRange(effectiveFrom?: string, ceasedOn?: string): string {
     if (effectiveFrom && ceasedOn) {
       return `${this.formatDate(effectiveFrom)} to ${this.formatDate(ceasedOn)}`;
@@ -206,6 +217,7 @@ export class CompanyDetails {
     return 'Dates not available';
   }
 
+  // Turns API-style values into readable labels with a missing-value fallback.
   protected formatLabel(value?: string): string {
     if (!value) {
       return 'Not available';
@@ -217,14 +229,17 @@ export class CompanyDetails {
       .replace(/\b\w/g, (character) => character.toUpperCase());
   }
 
+  // Displays optional boolean values as Yes, No, or Not available.
   protected booleanLabel(value?: boolean): string {
     return value === undefined ? 'Not available' : value ? 'Yes' : 'No';
   }
 
+  // Exposes the profile's related links as entries for the template.
   protected linkEntries(profile: CompaniesHouseCompanyProfile): readonly [string, string][] {
     return Object.entries(profile.links ?? {});
   }
 
+  // Chooses a colour treatment for the company's current status.
   protected statusTone(status?: string): 'active' | 'inactive' | 'neutral' {
     const normalized = status?.toLowerCase();
     if (normalized === 'active') {
@@ -238,6 +253,7 @@ export class CompanyDetails {
     return 'neutral';
   }
 
+  // Clears the previous profile and history before requesting another company.
   private requestDetails(registrationNumber: string): void {
     this.currentRegistrationNumber = registrationNumber;
     this.loading.set(true);
@@ -252,6 +268,7 @@ export class CompanyDetails {
     this.requests.next(registrationNumber);
   }
 
+  // Starts a history request while preserving the current profile.
   private requestHistory(): void {
     this.loadingHistory.set(true);
     this.historyFailed.set(false);

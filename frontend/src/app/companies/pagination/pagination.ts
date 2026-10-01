@@ -22,6 +22,7 @@ export class Pagination {
     Math.max(1, Math.ceil(this.totalResults() / this.pageSize())),
   );
 
+  // Emits a page change only when the destination is valid and paging is enabled.
   protected goTo(page: number): void {
     if (!this.disabled() && page >= 1 && page <= this.totalPages()) {
       this.pageChange.emit(page);
