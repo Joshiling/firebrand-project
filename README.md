@@ -44,6 +44,22 @@ npm start
 
 Open the URL printed by Angular, normally `http://localhost:4200`. The development proxy forwards API requests to `https://localhost:7097`.
 
+To run this checkout alongside another backend already using port 7097, start its API on a free port from this checkout's root:
+
+```powershell
+dotnet run --project api/api.csproj --no-launch-profile --urls https://localhost:7098
+```
+
+In the frontend terminal, set the proxy target before starting Angular:
+
+```powershell
+Set-Location frontend
+$env:FIREBRAND_API_PROXY_TARGET = 'https://localhost:7098'
+npm start -- --port 4205
+```
+
+Without `FIREBRAND_API_PROXY_TARGET`, the proxy continues to use port 7097. Each checkout has its own SQLite database, so a new worktree's activity log may initially be empty.
+
 ## API Routes
 
 ```http
