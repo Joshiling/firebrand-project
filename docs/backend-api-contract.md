@@ -146,6 +146,20 @@ Return `200 OK` with one full company profile. The supplied Lloyds response is t
 
 The backend maps accounts, confirmation statements, company flags, previous names, SIC codes, registered address, links, and other profile metadata. Missing optional Companies House fields remain nullable so the details page can show an explicit fallback. Return `404 Not Found` if the company does not exist.
 
+## Company history
+
+### Frontend request
+
+```http
+GET /registry_id/00002065/history
+```
+
+The `registry_id` path value is validated using the same rules as the company-details route.
+
+### Successful response
+
+Return `200 OK` with company-profile snapshots ordered by `version_number` descending. Return `404 Not Found` when the company has no stored history.
+
 ## Search activity
 
 ### Frontend request
@@ -181,15 +195,14 @@ This route reads search activity from `database.db`, ordered newest first. `page
 
 ## Error responses
 
-Use these HTTP statuses consistently for all three routes:
+Use these HTTP statuses consistently for the company search, details, and history routes:
 
 | Status                    | Meaning                                                            |
 | ------------------------- | ------------------------------------------------------------------ |
 | `400 Bad Request`         | Missing or invalid name or registration number                     |
 | `404 Not Found`           | Company details were not found                                     |
-| `429 Too Many Requests`   | Companies House rate limit was reached                             |
-| `502 Bad Gateway`         | Companies House returned an unexpected failure or invalid response |
-| `503 Service Unavailable` | Companies House could not be reached or timed out                  |
+| `502 Bad Gateway`         | Companies House returned an unexpected failure, invalid response, or transport error |
+| `503 Service Unavailable` | Companies House rate limit was reached or the API key is unavailable                 |
 
 Errors should return JSON without exposing API keys, upstream authorization headers, stack traces, or internal exception details. A minimal response is:
 

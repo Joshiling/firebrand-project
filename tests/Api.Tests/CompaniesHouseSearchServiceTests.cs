@@ -6,6 +6,7 @@ using Api.Models;
 using Api.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.AspNetCore.Http;
 
 namespace Api.Tests;
 
@@ -95,6 +96,42 @@ public sealed class CompaniesHouseSearchServiceTests
         }
 
     [Fact]
+    public async Task SearchAsync_RanksExactPrefixWordAndSubstringMatchesInOrder()
+    {
+        // Arrange
+        const string searchJson = """
+            {
+              "items": [
+                { "company_number": "00000005", "title": "Other Company", "company_status": "active" },
+                { "company_number": "00000004", "title": "OldLloyds Holdings", "company_status": "active" },
+                { "company_number": "00000003", "title": "The Lloyds Group", "company_status": "active" },
+                { "company_number": "00000002", "title": "Lloyds Banking Group", "company_status": "active" },
+                { "company_number": "00000001", "title": "Lloyds", "company_status": "active" },
+                { "company_number": "00000006", "title": "Another Company", "company_status": "active" }
+              ],
+              "total_results": 6
+            }
+            """;
+
+        var httpClientFactory = CreateHttpClientFactory(HttpStatusCode.OK, searchJson);
+        var configuration = CreateConfiguration();
+        var service = new CompaniesHouseSearchService(httpClientFactory, configuration, _databaseService);
+
+        // Act
+        var results = await service.SearchAsync("Lloyds", CancellationToken.None);
+
+        // Assert
+        Assert.Collection(
+            results,
+            company => Assert.Equal("Lloyds", company.Name),
+            company => Assert.Equal("Lloyds Banking Group", company.Name),
+            company => Assert.Equal("The Lloyds Group", company.Name),
+            company => Assert.Equal("OldLloyds Holdings", company.Name),
+            company => Assert.Equal("Other Company", company.Name),
+            company => Assert.Equal("Another Company", company.Name));
+        }
+
+    [Fact]
     public async Task SearchAsync_OnApiError_LogsFailureAndRethrows()
     {
         // Arrange
@@ -112,6 +149,24 @@ public sealed class CompaniesHouseSearchServiceTests
         var log = _databaseService.SavedLogs[0];
         Assert.Equal("failed-search", log.UserInput);
         Assert.Equal(ex.StatusCode, log.HttpStatus);
+        Assert.Equal(0, log.ResultCount);
+        Assert.Equal(ex.Message, log.ApiResponse);
+        Assert.Empty(log.Companies);
+    }
+
+    [Fact]
+    public async Task SearchAsync_WhenExternalDataIsMalformed_LogsFailureAndThrowsHandledException()
+    {
+        var httpClientFactory = CreateHttpClientFactory(HttpStatusCode.OK, "{ malformed json");
+        var service = new CompaniesHouseSearchService(httpClientFactory, CreateConfiguration(), _databaseService);
+
+        var exception = await Assert.ThrowsAsync<CompaniesHouseApiException>(
+            () => service.SearchAsync("malformed-search", CancellationToken.None));
+
+        Assert.Equal(StatusCodes.Status502BadGateway, exception.StatusCode);
+        var log = Assert.Single(_databaseService.SavedLogs);
+        Assert.Equal("malformed-search", log.UserInput);
+        Assert.Equal(StatusCodes.Status502BadGateway, log.HttpStatus);
         Assert.Equal(0, log.ResultCount);
         Assert.Empty(log.Companies);
     }
