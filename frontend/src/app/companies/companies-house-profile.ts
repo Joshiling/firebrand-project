@@ -1,7 +1,7 @@
 import { CompanySummary } from './company.model';
 
-// This type deliberately mirrors the snake_case Companies House response. Keeping the external
-// shape here makes the eventual HTTP implementation straightforward and avoids hidden renaming.
+// The details view and mocks share this snake_case profile shape. The HTTP adapter translates
+// the backend's mixed naming contract at the boundary, not inside presentation components.
 export interface CompaniesHouseCompanyProfile {
   accounts?: {
     accounting_reference_date?: { day: string; month: string };

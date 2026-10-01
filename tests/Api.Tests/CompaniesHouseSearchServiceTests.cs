@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using Api.Database;
 using Api.Exceptions;
 using Api.Models;
@@ -362,6 +363,107 @@ public sealed class CompaniesHouseSearchServiceTests
         Assert.Empty(log.Companies);
     }
 
+    [Fact]
+    public async Task GetByRegistryIdAsync_PreservesOwnedProfileFieldsAndNestedWireNames()
+    {
+        const string json = """
+            {
+              "company_name":"TEST PLC", "company_number":"00000001", "type":"plc",
+              "accounts":{
+                "accounting_reference_date":{"day":"31","month":"12"},
+                "last_accounts":{"made_up_to":"2024-12-31","period_start_on":"2024-01-01","period_end_on":"2024-12-31","type":"small"},
+                "next_accounts":{"due_on":"2026-09-30","period_start_on":"2025-01-01","period_end_on":"2025-12-31","overdue":false},
+                "next_due":"2026-09-30","next_made_up_to":"2025-12-31","overdue":false
+              },
+              "confirmation_statement":{"last_made_up_to":"2024-01-01","next_due":"2025-01-15","next_made_up_to":"2025-01-01","overdue":false},
+              "can_file":false,"has_charges":false,"has_insolvency_history":false,"has_super_secure_pscs":false,
+              "registered_office_is_in_dispute":false,"undeliverable_registered_office_address":false,
+              "etag":"etag-value","jurisdiction":"england-wales","last_full_members_list_date":"2016-01-01",
+              "sic_codes":["64191"],"links":{"self":"/company/00000001"},
+              "previous_company_names":[{"name":"OLD NAME","effective_from":"2000-01-01","ceased_on":"2001-01-01"}],
+              "registered_office_address":{"address_line_1":"One Street","postal_code":"AB1 2CD"}
+            }
+            """;
+        var service = new CompaniesHouseSearchService(CreateHttpClientFactory(HttpStatusCode.OK, json), CreateConfiguration(), _databaseService);
+
+        var company = await service.GetByRegistryIdAsync("00000001", CancellationToken.None);
+
+        Assert.NotNull(company);
+        Assert.False(company.CanFile);
+        Assert.False(company.HasCharges);
+        Assert.False(company.HasInsolvencyHistory);
+        Assert.False(company.HasSuperSecurePscs);
+        Assert.False(company.RegisteredOfficeIsInDispute);
+        Assert.False(company.UndeliverableRegisteredOfficeAddress);
+        Assert.Equal("etag-value", company.Etag);
+        Assert.Equal("england-wales", company.Jurisdiction);
+        Assert.Equal(new DateOnly(2016, 1, 1), company.LastFullMembersListDate);
+        Assert.Equal(new[] { "64191" }, company.SicCodes);
+        Assert.Equal("/company/00000001", company.Links!["self"]);
+
+        using var source = JsonDocument.Parse(json);
+        using var response = JsonDocument.Parse(JsonSerializer.Serialize(company, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        foreach (var (sourceName, responseName) in new[] {
+            ("accounts", "accounts"), ("confirmation_statement", "confirmationStatement"),
+            ("previous_company_names", "previousCompanyNames"), ("registered_office_address", "registeredOfficeAddress") })
+        {
+            AssertJsonSubset(source.RootElement.GetProperty(sourceName), response.RootElement.GetProperty(responseName));
+        }
+    }
+
+    [Fact]
+    public async Task GetByRegistryIdAsync_LeavesMissingOwnedFieldsNull()
+    {
+        var service = new CompaniesHouseSearchService(CreateHttpClientFactory(HttpStatusCode.OK,
+            """{"company_name":"SPARSE","company_number":"00000002"}"""), CreateConfiguration(), _databaseService);
+        var company = await service.GetByRegistryIdAsync("00000002", CancellationToken.None);
+        Assert.NotNull(company);
+        Assert.Null(company.Accounts);
+        Assert.Null(company.CanFile);
+        Assert.Null(company.ConfirmationStatement);
+        Assert.Null(company.PreviousCompanyNames);
+        Assert.Null(company.SicCodes);
+    }
+
+    [Fact]
+    public async Task SearchAsync_PreservesOwnedSummaryFieldsAndBoundsUpstreamPaging()
+    {
+        var handler = new MockHttpMessageHandler(HttpStatusCode.OK, """
+            {"items":[{"company_number":"00000001","title":"TEST PLC","company_status":"active","company_type":"plc"}],"total_results":10000}
+            """, null);
+        using var client = new HttpClient(handler) { BaseAddress = new Uri("https://api.company-information.service.gov.uk/") };
+        var service = new CompaniesHouseSearchService(new MockHttpClientFactory(client), CreateConfiguration(), _databaseService);
+
+        var result = await service.SearchAsync("TEST", CancellationToken.None);
+
+        var company = Assert.Single(result);
+        Assert.Equal("active", company.CompanyStatus);
+        Assert.Equal("plc", company.CompanyType);
+        Assert.Equal(1, handler.RequestCount);
+        Assert.Contains("items_per_page=100", handler.LastRequestUri?.Query);
+        Assert.Contains("start_index=0", handler.LastRequestUri?.Query);
+    }
+
+    private static void AssertJsonSubset(JsonElement expected, JsonElement actual)
+    {
+        Assert.Equal(expected.ValueKind, actual.ValueKind);
+        if (expected.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in expected.EnumerateObject())
+                AssertJsonSubset(property.Value, actual.GetProperty(property.Name));
+        }
+        else if (expected.ValueKind == JsonValueKind.Array)
+        {
+            Assert.Equal(expected.GetArrayLength(), actual.GetArrayLength());
+            for (var index = 0; index < expected.GetArrayLength(); index++)
+                AssertJsonSubset(expected[index], actual[index]);
+        }
+        else
+        {
+            Assert.Equal(expected.ToString(), actual.ToString());
+        }
+    }
+
     private static IConfiguration CreateConfiguration() =>
         new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -394,9 +496,14 @@ public sealed class CompaniesHouseSearchServiceTests
         string content,
         Action<HttpRequestMessage>? requestObserver) : HttpMessageHandler
     {
+        public int RequestCount { get; private set; }
+        public Uri? LastRequestUri { get; private set; }
+
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             requestObserver?.Invoke(request);
+            RequestCount++;
+            LastRequestUri = request.RequestUri;
             var response = new HttpResponseMessage(statusCode)
             {
                 Content = new StringContent(content)

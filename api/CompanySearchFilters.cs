@@ -19,7 +19,7 @@ public sealed record CompanySearchFilters
         || Country.HasValue;
 }
 
-/// <summary>Filter values accepted by the company search endpoints.</summary>
+/// <summary>Enum member names accepted by query binding, not Companies House wire values.</summary>
 public sealed record CompanyFilterOptionsResponse(
     IReadOnlyList<string> CompanyStatuses,
     IReadOnlyList<string> CompanyTypes,

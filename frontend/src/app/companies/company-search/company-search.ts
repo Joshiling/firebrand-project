@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, ElementRef, HostListener, inject, signal, viewChild } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   ReactiveFormsModule,
@@ -37,7 +37,7 @@ export class CompanySearch {
   private readonly searchService = inject(CompanySearchService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly requests = new Subject<CompanySearchRequest>();
+  private readonly requests = new Subject<CompanySearchRequest | null>();
   private readonly filterRequests = new Subject<void>();
   private readonly statusPicker = viewChild<ElementRef<HTMLDetailsElement>>('statusPicker');
   private readonly typePicker = viewChild<ElementRef<HTMLDetailsElement>>('typePicker');
@@ -59,11 +59,19 @@ export class CompanySearch {
     companyTypes: new FormControl<string[]>([''], { nonNullable: true }),
     country: new FormControl('', { nonNullable: true }),
   });
+  // URL restoration changes form values without changing the option-search text.
+  // Track selections reactively so selected options remain visible in a filtered list.
+  private readonly selectedStatuses = toSignal(this.searchForm.controls.companyStatuses.valueChanges, {
+    initialValue: this.searchForm.controls.companyStatuses.value,
+  });
+  private readonly selectedTypes = toSignal(this.searchForm.controls.companyTypes.valueChanges, {
+    initialValue: this.searchForm.controls.companyTypes.value,
+  });
   protected readonly visibleStatuses = computed(() => this.matchingOptions(
-    this.filterOptions()?.companyStatuses ?? [], this.statusFilter(), this.searchForm.controls.companyStatuses.value,
+    this.filterOptions()?.companyStatuses ?? [], this.statusFilter(), this.selectedStatuses(),
   ));
   protected readonly visibleTypes = computed(() => this.matchingOptions(
-    this.filterOptions()?.companyTypes ?? [], this.typeFilter(), this.searchForm.controls.companyTypes.value,
+    this.filterOptions()?.companyTypes ?? [], this.typeFilter(), this.selectedTypes(),
   ));
   protected readonly result = signal<CompanySearchPage | null>(null);
   protected readonly loading = signal(false);
@@ -159,7 +167,7 @@ export class CompanySearch {
     this.requests
       .pipe(
         switchMap((request) =>
-          this.searchService.search(request).pipe(
+          request === null ? EMPTY : this.searchService.search(request).pipe(
             map((result): SearchOutcome => ({ kind: 'success', result })),
             catchError(() => of<SearchOutcome>({ kind: 'error' })),
           ),
@@ -204,6 +212,19 @@ export class CompanySearch {
   private restoreFromUrl(params: ParamMap): void {
       const query = params.get('q')?.trim() ?? '';
       if (!query) {
+        // Reset through switchMap as well as the view, so a late response cannot revive it.
+        this.requests.next(null);
+        this.lastSubmittedQuery = '';
+        this.submittedFilters = {};
+        this.lastRequestedKey = '';
+        this.searchForm.reset({ query: '', companyStatuses: [''], companyTypes: [''], country: '' });
+        this.statusFilter.set('');
+        this.typeFilter.set('');
+        this.currentPage.set(1);
+        this.result.set(null);
+        this.loading.set(false);
+        this.hasSearched.set(false);
+        this.requestFailed.set(false);
         return;
       }
 

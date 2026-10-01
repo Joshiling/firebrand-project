@@ -231,6 +231,84 @@ public sealed class CompanyDatabaseServiceTests : IDisposable
         Assert.Equal("LLOYDS BANK PLC", log.CompanyName);
     }
 
+    [Theory]
+    [InlineData("%")]
+    [InlineData("_")]
+    [InlineData("\\")]
+    [InlineData("' OR 1=1 --")]
+    public async Task GetSearchLogsAsync_TreatsSearchMetacharactersAsLiteralData(string query)
+    {
+        var expectedId = await _databaseService.SaveSearchLogAsync($"before{query}after", 200, 0, "private payload", []);
+        await _databaseService.SaveSearchLogAsync("unrelated", 200, 0, null, []);
+
+        var result = await _databaseService.GetSearchLogsAsync(1, 20, $"  {query}  ");
+
+        Assert.Equal(1, result.TotalResults);
+        Assert.Equal(expectedId, Assert.Single(result.Items).SearchLogId);
+        Assert.Equal(query, result.Query);
+        var repeated = await _databaseService.GetSearchLogsAsync(1, 20);
+        Assert.Equal(2, repeated.TotalResults);
+    }
+
+    [Fact]
+    public async Task GetSearchLogsAsync_LargePageDoesNotOverflowBackToFirstPage()
+    {
+        await _databaseService.SaveSearchLogAsync("first", 200, 0, null, []);
+        var result = await _databaseService.GetSearchLogsAsync(int.MaxValue, 20);
+        Assert.Empty(result.Items);
+        Assert.Equal(1, result.TotalResults);
+        Assert.Equal(int.MaxValue, result.Page);
+    }
+
+    [Fact]
+    public async Task GetSearchLogsAsync_PagesEqualTimestampsDeterministicallyWithoutDuplicateRows()
+    {
+        var identifiers = new List<long>();
+        for (var index = 0; index < 5; index++)
+            identifiers.Add(await _databaseService.SaveSearchLogAsync($"input {index}", 200, 0, null, []));
+        await using var connection = new SqliteConnection($"Data Source={_tempDbPath}");
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE search_logs SET SearchedAt = '2026-01-01 12:00:00';";
+        await command.ExecuteNonQueryAsync();
+
+        var returned = new List<long>();
+        foreach (var page in new[] { 1, 2, 3, 4 })
+        {
+            var result = await _databaseService.GetSearchLogsAsync(page, 2);
+            Assert.Equal(5, result.TotalResults);
+            returned.AddRange(result.Items.Select(item => item.SearchLogId));
+        }
+        identifiers.Reverse();
+        Assert.Equal(identifiers, returned);
+    }
+
+    [Fact]
+    public async Task GetSearchLogsAsync_MultipleLinkedCompaniesDoNotDuplicateTheLogOrInventOneName()
+    {
+        var identifier = await _databaseService.SaveSearchLogAsync("broad search", 200, 2, null, [
+            new CompanyDbRecord { CompanyNumber = "00000001", CompanyName = "MATCH ONE" },
+            new CompanyDbRecord { CompanyNumber = "00000002", CompanyName = "MATCH TWO" }
+        ]);
+        foreach (var query in new[] { "match", "00000002", "broad" })
+        {
+            var result = await _databaseService.GetSearchLogsAsync(1, 20, query);
+            Assert.Equal(1, result.TotalResults);
+            var item = Assert.Single(result.Items);
+            Assert.Equal(identifier, item.SearchLogId);
+            Assert.Null(item.CompanyName);
+        }
+    }
+
+    [Fact]
+    public async Task GetSearchLogsAsync_EmptyDatabaseReturnsAnEmptyPage()
+    {
+        var result = await _databaseService.GetSearchLogsAsync(1, 20, "   ");
+        Assert.Empty(result.Items);
+        Assert.Equal(0, result.TotalResults);
+        Assert.Null(result.Query);
+    }
+
     [Fact]
     public async Task SaveSearchLogAsync_Upsert_PreservesExistingExternalRegistrationNumberWhenNull()
     {

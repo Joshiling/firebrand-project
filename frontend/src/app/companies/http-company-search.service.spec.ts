@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Observable } from 'rxjs';
 import { HttpCompanySearchService } from './http-company-search.service';
 
 describe('HttpCompanySearchService', () => {
@@ -98,13 +98,13 @@ describe('HttpCompanySearchService', () => {
       companyStatus: 'active',
       companyType: 'plc',
       accounts: {
-        accountingReferenceDate: { day: '31', month: '12' },
-        nextDue: '2027-06-30',
+        accounting_reference_date: { day: '31', month: '12' },
+        next_due: '2027-06-30',
         overdue: false,
       },
       canFile: true,
       confirmationStatement: {
-        nextDue: '2027-05-20',
+        next_due: '2027-05-20',
         overdue: false,
       },
       dateOfCreation: '1865-04-20',
@@ -118,15 +118,15 @@ describe('HttpCompanySearchService', () => {
       previousCompanyNames: [
         {
           name: 'LLOYDS TSB BANK PLC',
-          effectiveFrom: '1999-06-28',
-          ceasedOn: '2013-09-23',
+          effective_from: '1999-06-28',
+          ceased_on: '2013-09-23',
         },
       ],
       registeredOfficeAddress: {
-        addressLine1: '25 Gresham Street',
+        address_line_1: '25 Gresham Street',
         country: 'United Kingdom',
         locality: 'London',
-        postalCode: 'EC2V 7HN',
+        postal_code: 'EC2V 7HN',
         region: 'Greater London',
       },
       registeredOfficeIsInDispute: false,
@@ -222,5 +222,84 @@ describe('HttpCompanySearchService', () => {
     request.flush(null, { status: 404, statusText: 'Not Found' });
 
     await expect(resultPromise).resolves.toBeNull();
+  });
+
+  it.each([400, 429, 500, 502, 503])('propagates HTTP %i for search and details', async (status) => {
+    const operations: Observable<unknown>[] = [service.search({ query: 'Tesco', page: 1, pageSize: 10 }), service.getDetails('00445790')];
+    for (const operation of operations) {
+      const result = firstValueFrom(operation);
+      const rejected = expect(result).rejects.toMatchObject({ status });
+      http.expectOne(() => true).flush({ detail: 'Unavailable' }, { status, statusText: 'Failure' });
+      await rejected;
+    }
+  });
+
+  it('propagates a network failure and allows the next request to succeed', async () => {
+    const failed = firstValueFrom(service.getDetails('00445790'));
+    const rejected = expect(failed).rejects.toMatchObject({ status: 0 });
+    http.expectOne('/registry_id/00445790').error(new ProgressEvent('error'));
+    await rejected;
+    const recovered = firstValueFrom(service.getDetails('00445790'));
+    http.expectOne('/registry_id/00445790').flush({ name: 'TESCO', registryId: '00445790' });
+    await expect(recovered).resolves.toMatchObject({ company_name: 'TESCO', company_number: '00445790' });
+  });
+
+  it.each(['A & B + C', "O'Brien / Trading", 'Caf\u00e9'])('encodes query %s as one parameter', async (query) => {
+    const result = firstValueFrom(service.search({ query: ` ${query} `, page: 1, pageSize: 10 }));
+    const request = http.expectOne((candidate) => candidate.url === '/name');
+    const url = new URL(request.request.urlWithParams, 'http://localhost');
+    expect([...url.searchParams.entries()]).toEqual([['name', query]]);
+    expect(request.request.headers.has('Authorization')).toBe(false);
+    request.flush([]);
+    await expect(result).resolves.toEqual({ items: [], totalResults: 0, page: 1, pageSize: 10 });
+  });
+
+  it('encodes a details identifier as one path segment', async () => {
+    const result = firstValueFrom(service.getDetails(' SC12/34?56 '));
+    http.expectOne('/registry_id/SC12%2F34%3F56').flush(null, { status: 404, statusText: 'Not Found' });
+    await expect(result).resolves.toBeNull();
+  });
+
+  it('cancels HTTP work on unsubscription for both owned operations', () => {
+    const operations: Observable<unknown>[] = [service.search({ query: 'Tesco', page: 1, pageSize: 10 }), service.getDetails('00445790')];
+    for (const operation of operations) {
+      const subscription = operation.subscribe();
+      const request = http.expectOne(() => true);
+      subscription.unsubscribe();
+      expect(request.cancelled).toBe(true);
+    }
+  });
+
+  it('preserves nested false values and every accounts period field', async () => {
+    const result = firstValueFrom(service.getDetails('00000001'));
+    http.expectOne('/registry_id/00000001').flush({
+      name: 'TEST', registryId: '00000001', canFile: false,
+      accounts: {
+        accounting_reference_date: {},
+        last_accounts: { made_up_to: '2024-12-31', period_start_on: '2024-01-01', period_end_on: '2024-12-31', type: 'small' },
+        next_accounts: { due_on: '2026-09-30', overdue: false, period_start_on: '2025-01-01', period_end_on: '2025-12-31' },
+        next_made_up_to: '2025-12-31', overdue: false,
+      },
+      confirmationStatement: { last_made_up_to: '2024-01-01', next_made_up_to: '2025-01-01', overdue: false },
+      previousCompanyNames: [{}], sicCodes: [],
+    });
+    await expect(result).resolves.toMatchObject({
+      can_file: false,
+      accounts: {
+        accounting_reference_date: { day: '', month: '' },
+        last_accounts: { made_up_to: '2024-12-31', period_start_on: '2024-01-01', period_end_on: '2024-12-31', type: 'small' },
+        next_accounts: { due_on: '2026-09-30', overdue: false, period_start_on: '2025-01-01', period_end_on: '2025-12-31' },
+        next_made_up_to: '2025-12-31', overdue: false,
+      },
+      confirmation_statement: { last_made_up_to: '2024-01-01', next_made_up_to: '2025-01-01', overdue: false },
+      previous_company_names: [{ name: 'Not available' }], sic_codes: [],
+      registered_office_address: undefined,
+    });
+  });
+
+  it('uses a flat address only when a structured address is absent', async () => {
+    const result = firstValueFrom(service.getDetails('00000001'));
+    http.expectOne('/registry_id/00000001').flush({ name: 'TEST', registryId: '00000001', address: 'Flat address', accounts: null });
+    await expect(result).resolves.toMatchObject({ registered_office_address: { address_line_1: 'Flat address' }, accounts: undefined });
   });
 });

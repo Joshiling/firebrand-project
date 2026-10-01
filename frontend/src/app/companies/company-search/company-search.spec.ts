@@ -306,6 +306,60 @@ describe('CompanySearch', () => {
     });
   });
 
+  it('keeps newly restored selections visible under an existing option search', async () => {
+    const input = fixture.nativeElement.querySelector('input[aria-label="Find company status"]') as HTMLInputElement;
+    input.value = 'no match';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(picker('status').querySelectorAll('.filter-picker__list button')).toHaveLength(1);
+
+    await TestBed.inject(Router).navigate([], { queryParams: { q: 'Tesco', status: 'Active' } });
+    fixture.detectChanges();
+
+    expect(Array.from(picker('status').querySelectorAll('.filter-picker__list button'),
+      (button) => button.textContent?.trim())).toEqual(['Any company status', 'Active']);
+  });
+
+  it('removing the final selection restores Any independently for each picker', () => {
+    setQuery('Tesco');
+    choose('status', 'Active');
+    choose('type', 'Ltd');
+    choose('status', 'Active');
+    submit();
+    expect(service.search).toHaveBeenLastCalledWith({ query: 'Tesco', page: 1, pageSize: 10, companyTypes: ['Ltd'] });
+    choose('type', 'Ltd');
+    submit();
+    expect(service.search).toHaveBeenLastCalledWith({ query: 'Tesco', page: 1, pageSize: 10 });
+  });
+
+  it('restores only the latest filtered URL when metadata arrives', async () => {
+    const options = new Subject<CompanyFilterOptions>();
+    service.optionsResponse = options;
+    fixture.destroy();
+    fixture = TestBed.createComponent(CompanySearch);
+    fixture.detectChanges();
+    const router = TestBed.inject(Router);
+    await router.navigate([], { queryParams: { q: 'Old', status: 'Active' } });
+    await router.navigate([], { queryParams: { q: 'Latest', type: 'Plc' } });
+    expect(service.search).not.toHaveBeenCalled();
+    options.next(service.options);
+    expect(service.search).toHaveBeenCalledExactlyOnceWith({ query: 'Latest', page: 1, pageSize: 10, companyTypes: ['Plc'] });
+  });
+
+  it('does not resurrect a filtered deep link after a new unfiltered submission', async () => {
+    const options = new Subject<CompanyFilterOptions>();
+    service.optionsResponse = options;
+    fixture.destroy();
+    fixture = TestBed.createComponent(CompanySearch);
+    fixture.detectChanges();
+    await TestBed.inject(Router).navigate([], { queryParams: { q: 'Old', status: 'Active' } });
+    setQuery('Latest');
+    submit();
+    await finishRequest();
+    options.next(service.options);
+    expect(service.search).toHaveBeenCalledExactlyOnceWith({ query: 'Latest', page: 1, pageSize: 10 });
+  });
+
   it('closes a picker when clicking elsewhere or pressing Escape', () => {
     const status = picker('status');
     status.open = true;
@@ -360,4 +414,56 @@ describe('CompanySearch', () => {
     expect(service.search).toHaveBeenLastCalledWith({ query: 'Northstar', page: 1, pageSize: 10 });
   });
 
+  it.each(['0', '-1', '1.5', 'abc'])('normalizes invalid URL page %s', async (page) => {
+    await TestBed.inject(Router).navigate([], { queryParams: { q: ' Tesco ', page } });
+    expect(service.search).toHaveBeenCalledExactlyOnceWith({ query: 'Tesco', page: 1, pageSize: 10 });
+  });
+
+  it('recovers after an error without recreating the component', async () => {
+    service.shouldFail = true;
+    setQuery('Tesco');
+    submit();
+    service.shouldFail = false;
+    submit();
+    await finishRequest();
+    expect(fixture.nativeElement.textContent).toContain('Tesco PLC');
+    expect(fixture.nativeElement.textContent).not.toContain('We could not complete the search');
+  });
+
+  it('cancels an older search and ignores its late response', async () => {
+    const older = new Subject<CompanySearchPage>();
+    const latest = new Subject<CompanySearchPage>();
+    service.search.mockReturnValueOnce(older).mockReturnValueOnce(latest);
+    const router = TestBed.inject(Router);
+    await router.navigate([], { queryParams: { q: 'Older' } });
+    await router.navigate([], { queryParams: { q: 'Latest' } });
+    expect(older.observed).toBe(false);
+    latest.next(service.response);
+    older.next({ ...service.response, items: [{ name: 'Stale result', registrationNumber: '12345678' }] });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Tesco PLC');
+    expect(fixture.nativeElement.textContent).not.toContain('Stale result');
+    fixture.destroy();
+    expect(latest.observed).toBe(false);
+  });
+
+  it('clears results and cancels the request when navigation removes the query', async () => {
+    const pending = new Subject<CompanySearchPage>();
+    service.search.mockReturnValue(pending);
+    const router = TestBed.inject(Router);
+    await router.navigate([], { queryParams: { q: 'Tesco' } });
+    pending.next(service.response);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Tesco PLC');
+
+    await router.navigate([], { queryParams: {} });
+    fixture.detectChanges();
+    expect(pending.observed).toBe(false);
+    expect(fixture.nativeElement.textContent).not.toContain('Tesco PLC');
+    expect(fixture.nativeElement.textContent).not.toContain('Searching company records');
+    expect((fixture.nativeElement.querySelector('input') as HTMLInputElement).value).toBe('');
+
+    await router.navigate([], { queryParams: { q: 'Tesco' } });
+    expect(service.search).toHaveBeenCalledTimes(2);
+  });
 });
