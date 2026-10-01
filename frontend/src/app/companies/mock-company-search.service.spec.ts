@@ -15,6 +15,7 @@ describe('MockCompanySearchService', () => {
     vi.useRealTimers();
   });
 
+  // Advances the mock search delay before resolving its page of results.
   async function completeSearch(query: string, page = 1, pageSize = 10, filters: Partial<CompanySearchRequest> = {}) {
     const resultPromise = firstValueFrom(service.search({ query, page, pageSize, ...filters }));
     await vi.advanceTimersByTimeAsync(300);
@@ -29,6 +30,7 @@ describe('MockCompanySearchService', () => {
     expect(result.items.every((company) => company.status === 'dissolved')).toBe(true);
   });
 
+  // Each filter separately excludes the otherwise exact company-number match.
   it.each([
     { companyStatuses: ['Dissolved'] },
     { companyTypes: ['Ltd'] },
@@ -60,6 +62,7 @@ describe('MockCompanySearchService', () => {
   it.each(['lloyds', '00002065'])('matches all explicit dimensions for %s', async (query) => {
     const address = MOCK_COMPANY_PROFILES.find((profile) => profile.company_number === '00002065')!.registered_office_address!;
     const originalCountry = address.country;
+    // Supply a country for this case, then restore the shared fixture for later tests.
     try {
       address.country = 'England';
       const result = await completeSearch(query, 1, 10, {
@@ -78,12 +81,14 @@ describe('MockCompanySearchService', () => {
     }
   });
 
+  // Advances the shorter mock profile delay before returning the full company.
   async function completeDetails(registrationNumber: string) {
     const resultPromise = firstValueFrom(service.getDetails(registrationNumber));
     await vi.advanceTimersByTimeAsync(250);
     return resultPromise;
   }
 
+  // Advances the mock history delay before returning recorded versions.
   async function completeHistory(registrationNumber: string) {
     const resultPromise = firstValueFrom(service.getHistory(registrationNumber));
     await vi.advanceTimersByTimeAsync(200);

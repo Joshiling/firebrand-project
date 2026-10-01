@@ -56,6 +56,7 @@ describe('SearchLogService', () => {
   });
 
   it('encodes literal punctuation and cancels on unsubscription', () => {
+    // These characters must remain one literal query parameter, not URL syntax.
     const query = 'A & B + 100%_';
     const subscription = service.getPage(1, 20, query).subscribe();
     const request = http.expectOne((candidate) => candidate.url === '/search_logs');

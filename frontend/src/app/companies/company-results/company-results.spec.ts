@@ -7,6 +7,7 @@ describe('CompanyResults', () => {
 
   it('preserves identifiers and search context in links while escaping display strings', () => {
     const fixture = TestBed.createComponent(CompanyResults);
+    // Script-shaped input must appear as text, never as an executable DOM element.
     fixture.componentRef.setInput('companies', [{
       name: '<script>alert(1)</script>', registrationNumber: '00002065',
       registeredAddress: { addressLine1: 'One Street', addressLine2: '', locality: 'London', postalCode: 'AB1 2CD' },
@@ -29,6 +30,7 @@ describe('CompanyResults', () => {
     expect(element.textContent).toContain('Not available');
   });
 
+  // [API status, displayed label, CSS tone] covers active, inactive, and fallback states.
   it.each([
     ['ACTIVE', 'Active', 'active'], ['dissolved', 'Dissolved', 'inactive'], ['registered', 'Registered', 'neutral'],
   ])('provides a textual status for %s as well as its visual tone', (status, label, tone) => {

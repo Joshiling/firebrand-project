@@ -7,6 +7,7 @@ import { SearchLogPage } from './search-log.model';
 export class SearchLogService {
   private readonly http = inject(HttpClient);
 
+  // Requests a page of saved searches, optionally filtered by query text.
   getPage(page: number, pageSize: number, query = ''): Observable<SearchLogPage> {
     let params = new HttpParams().set('page', page).set('pageSize', pageSize);
     if (query) {

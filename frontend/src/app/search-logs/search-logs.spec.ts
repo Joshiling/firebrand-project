@@ -7,6 +7,7 @@ import { SearchLogs } from './search-logs';
 
 class SearchLogServiceStub {
   shouldFail = false;
+  // Returns a delayed log page or a controlled database failure.
   readonly getPage = vi.fn(
     (page: number, pageSize: number, query = ''): Observable<SearchLogPage> => {
       if (this.shouldFail) {
@@ -51,6 +52,7 @@ describe('SearchLogs', () => {
 
   afterEach(() => vi.useRealTimers());
 
+  // Updates the activity filter through the user's input event.
   function setQuery(value: string): void {
     const input = fixture.nativeElement.querySelector('#log-query') as HTMLInputElement;
     input.value = value;
@@ -58,6 +60,7 @@ describe('SearchLogs', () => {
     fixture.detectChanges();
   }
 
+  // Builds an empty log page with only the fields relevant to a case overridden.
   function page(overrides: Partial<SearchLogPage> = {}): SearchLogPage {
     return { items: [], totalResults: 0, page: 1, pageSize: 20, ...overrides };
   }
@@ -85,6 +88,7 @@ describe('SearchLogs', () => {
     expect(fixture.nativeElement.textContent).toContain('Try again');
   });
 
+  // Zero, negative, fractional, and non-numeric page values all normalize to page one.
   it.each(['0', '-1', '1.5', 'invalid'])('normalizes invalid URL page %s', async (value) => {
     await TestBed.inject(Router).navigate([], { queryParams: { q: ' Lloyds ', page: value } });
     expect(service.getPage).toHaveBeenLastCalledWith(1, 20, 'Lloyds');
@@ -112,6 +116,7 @@ describe('SearchLogs', () => {
     expect(router.parseUrl(router.url).queryParams['q']).toBeUndefined();
   });
 
+  // No filter means no activity; a filtered query means no matching activity.
   it.each(['', 'missing'])('renders the appropriate empty state for filter %j', async (query) => {
     service.getPage.mockReturnValue(of(page()));
     await TestBed.inject(Router).navigate([], { queryParams: { q: query, page: 1 } });

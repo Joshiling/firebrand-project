@@ -17,6 +17,7 @@ import { CompanySearchService } from '../company-search.service';
 import { CompanyResults } from '../company-results/company-results';
 import { Pagination } from '../pagination/pagination';
 
+// Rejects a query made entirely of whitespace.
 function requiredTrimmed(control: AbstractControl<string>): ValidationErrors | null {
   return control.value.trim() ? null : { required: true };
 }
@@ -79,6 +80,7 @@ export class CompanySearch {
   protected readonly requestFailed = signal(false);
   protected readonly currentPage = signal(1);
 
+  // Builds link parameters from the last submitted search, not unsent form edits.
   protected searchParams(): Record<string, string | number | readonly string[] | undefined> {
     return {
       q: this.lastSubmittedQuery, page: this.currentPage(),
@@ -88,24 +90,29 @@ export class CompanySearch {
     };
   }
 
+  // Makes an enum-style filter value readable in the picker.
   protected filterLabel(value: string): string {
     return value.replace(/([a-z])([A-Z])/g, '$1 $2');
   }
 
+  // Summarizes selected filter values or shows the unfiltered label.
   protected selectionLabel(values: readonly string[], fallback: string): string {
     return values.filter(Boolean).map((value) => this.filterLabel(value)).join(', ') || fallback;
   }
 
+  // Updates the selected statuses and clears the picker's text search.
   protected selectStatus(value: string, picker: HTMLDetailsElement): void {
     this.selectOption(this.searchForm.controls.companyStatuses, value, picker);
     this.statusFilter.set('');
   }
 
+  // Updates the selected types and clears the picker's text search.
   protected selectType(value: string, picker: HTMLDetailsElement): void {
     this.selectOption(this.searchForm.controls.companyTypes, value, picker);
     this.typeFilter.set('');
   }
 
+  // Closes the other filter picker when this one opens.
   protected closeOtherPicker(picker: HTMLDetailsElement): void {
     if (picker.open) {
       const other = picker === this.statusPicker()?.nativeElement
@@ -116,6 +123,7 @@ export class CompanySearch {
     }
   }
 
+  // Dismisses pickers when the user clicks elsewhere on the page.
   @HostListener('document:click', ['$event'])
   protected closePickersOutside(event: MouseEvent): void {
     for (const picker of [this.statusPicker()?.nativeElement, this.typePicker()?.nativeElement]) {
@@ -125,6 +133,7 @@ export class CompanySearch {
     }
   }
 
+  // Closes open pickers and returns keyboard focus to their summaries.
   @HostListener('document:keydown.escape')
   protected closePickersOnEscape(): void {
     for (const picker of [this.statusPicker()?.nativeElement, this.typePicker()?.nativeElement]) {
@@ -135,17 +144,20 @@ export class CompanySearch {
     }
   }
 
+  // Clears the editable filter selections without submitting a new search.
   protected clearFilters(): void {
     this.searchForm.patchValue({ companyStatuses: [''], companyTypes: [''], country: '' });
     this.statusFilter.set('');
     this.typeFilter.set('');
   }
 
+  // Retries loading filter metadata after a failed request.
   protected retryFilterOptions(): void {
     this.filtersFailed.set(false);
     this.filterRequests.next();
   }
 
+  // Toggles a multi-select value while preserving the unfiltered sentinel.
   private selectOption(control: FormControl<string[]>, value: string, picker: HTMLDetailsElement): void {
     const selected = control.value.filter(Boolean);
     const next = selected.includes(value)
@@ -155,12 +167,14 @@ export class CompanySearch {
     picker.querySelector('summary')?.focus();
   }
 
+  // Keeps selected choices visible while narrowing the remaining options.
   private matchingOptions<T extends string>(options: readonly T[], text: string, selected: readonly string[]): readonly T[] {
     const search = text.trim().toLocaleLowerCase();
     return options.filter((option) => selected.includes(option)
       || this.filterLabel(option).toLocaleLowerCase().includes(search));
   }
 
+  // Connects URL, filter metadata, and searches to the component's view state.
   constructor() {
     // switchMap unsubscribes from an older request when a newer search starts. This prevents
     // a slow, stale response from replacing the results of the user's latest search.
@@ -209,6 +223,7 @@ export class CompanySearch {
     });
   }
 
+  // Restores the submitted search from the URL, or resets it when the query is empty.
   private restoreFromUrl(params: ParamMap): void {
       const query = params.get('q')?.trim() ?? '';
       if (!query) {
@@ -259,6 +274,7 @@ export class CompanySearch {
       }
   }
 
+  // Validates the form and submits its current query and filters on page one.
   protected submitSearch(): void {
     this.searchForm.controls.query.markAsTouched();
     this.searchForm.controls.query.updateValueAndValidity();
@@ -275,6 +291,7 @@ export class CompanySearch {
     this.updateSearchUrl(1);
   }
 
+  // Loads a different result page using the last submitted filters.
   protected changePage(page: number): void {
     if (!this.loading() && this.lastSubmittedQuery) {
       this.currentPage.set(page);
@@ -283,6 +300,7 @@ export class CompanySearch {
     }
   }
 
+  // Resets result state and sends the current search to the request stream.
   private requestPage(page: number): void {
     this.lastRequestedKey = this.requestKey(this.lastSubmittedQuery, page, this.submittedFilters);
     this.loading.set(true);
@@ -293,11 +311,13 @@ export class CompanySearch {
       ...this.submittedFilters });
   }
 
+  // Identifies a submitted query, page, and filters to avoid duplicate requests.
   private requestKey(query: string, page: number, filters: SearchFilters): string {
     return JSON.stringify([query.toLocaleLowerCase(), page, filters.companyStatuses,
       filters.companyTypes, filters.country]);
   }
 
+  // Drops empty filter values before adding selections to a request.
   private selectedFilters(statuses: string[], types: string[], country: string): SearchFilters {
     const selectedStatuses = statuses.filter(Boolean);
     const selectedTypes = types.filter(Boolean);
@@ -308,6 +328,7 @@ export class CompanySearch {
     };
   }
 
+  // Writes the submitted search into the URL without adding an extra history entry.
   private updateSearchUrl(page: number): void {
     // replaceUrl keeps pagination/search updates from filling browser history with intermediate
     // entries. The details page still creates a normal history entry, so Back returns here.

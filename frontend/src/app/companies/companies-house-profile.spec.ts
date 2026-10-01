@@ -29,6 +29,7 @@ describe('mapCompaniesHouseProfile', () => {
   });
 
   it('maps address fields without mutating or aliasing the source address', () => {
+    // Frozen inputs expose accidental mutation; a distinct output address avoids shared state.
     const address = Object.freeze({ address_line_1: 'One', address_line_2: 'Two', locality: 'Town', postal_code: 'AB1 2CD' });
     const profile = Object.freeze({ company_name: 'TEST', company_number: 'SC123456', registered_office_address: address });
     const summary = mapCompaniesHouseProfile(profile);
