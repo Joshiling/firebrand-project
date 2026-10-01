@@ -130,7 +130,7 @@ public static class CompanyEndpoints
     private static ProblemHttpResult CreateApiProblem(CompaniesHouseApiException exception) =>
         TypedResults.Problem(
             title: "Company lookup failed",
-            detail: exception.Message,
+            detail: "The company lookup service is temporarily unavailable. Please try again later.",
             statusCode: exception.StatusCode);
 
     private static bool IsValidRegistryId(string? value)

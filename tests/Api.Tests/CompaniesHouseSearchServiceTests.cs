@@ -93,6 +93,42 @@ public sealed class CompaniesHouseSearchServiceTests
         }
 
     [Fact]
+    public async Task SearchAsync_RanksExactPrefixWordAndSubstringMatchesInOrder()
+    {
+        // Arrange
+        const string searchJson = """
+            {
+              "items": [
+                { "company_number": "00000005", "title": "Other Company", "company_status": "active" },
+                { "company_number": "00000004", "title": "OldLloyds Holdings", "company_status": "active" },
+                { "company_number": "00000003", "title": "The Lloyds Group", "company_status": "active" },
+                { "company_number": "00000002", "title": "Lloyds Banking Group", "company_status": "active" },
+                { "company_number": "00000001", "title": "Lloyds", "company_status": "active" },
+                { "company_number": "00000006", "title": "Another Company", "company_status": "active" }
+              ],
+              "total_results": 6
+            }
+            """;
+
+        var httpClientFactory = CreateHttpClientFactory(HttpStatusCode.OK, searchJson);
+        var configuration = CreateConfiguration();
+        var service = new CompaniesHouseSearchService(httpClientFactory, configuration, _databaseService);
+
+        // Act
+        var results = await service.SearchAsync("Lloyds", CancellationToken.None);
+
+        // Assert
+        Assert.Collection(
+            results,
+            company => Assert.Equal("Lloyds", company.Name),
+            company => Assert.Equal("Lloyds Banking Group", company.Name),
+            company => Assert.Equal("The Lloyds Group", company.Name),
+            company => Assert.Equal("OldLloyds Holdings", company.Name),
+            company => Assert.Equal("Other Company", company.Name),
+            company => Assert.Equal("Another Company", company.Name));
+        }
+
+    [Fact]
     public async Task SearchAsync_OnApiError_LogsFailureAndRethrows()
     {
         // Arrange
