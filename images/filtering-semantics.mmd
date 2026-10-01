@@ -1,0 +1,30 @@
+flowchart LR
+    Status[Repeated company_status values] --> StatusRule[Any selected status]
+    Type[Repeated company_type values] --> TypeRule[Any selected type]
+    City[city] --> CityRule[Exact locality]
+    Country[country] --> CountryRule[Exact address country]
+
+    StatusRule --> Combine{All supplied categories match}
+    TypeRule --> Combine
+    CityRule --> Combine
+    CountryRule --> Combine
+
+    Combine -->|Yes| Match[Return candidate]
+    Combine -->|No or required field missing| NoMatch[Exclude candidate]
+
+    City --> Location{Advanced-search location parameter}
+    Country --> Location
+    Location -->|city when present| UpstreamCity[location=city]
+    Location -->|otherwise country| UpstreamCountry[location=country]
+    UpstreamCity --> Verify[Local verification remains required]
+    UpstreamCountry --> Verify
+    Verify --> Combine
+
+    classDef filter fill:#e8f1f5,stroke:#24566b,color:#183642
+    classDef rule fill:#f7f1df,stroke:#8a6d1d,color:#3d3214
+    classDef decision fill:#f8e8e5,stroke:#9b4b40,color:#49221d
+    classDef result fill:#e9f3e6,stroke:#427a3b,color:#203b1d
+    class Status,Type,City,Country filter
+    class StatusRule,TypeRule,CityRule,CountryRule,Location,UpstreamCity,UpstreamCountry,Verify rule
+    class Combine decision
+    class Match,NoMatch result

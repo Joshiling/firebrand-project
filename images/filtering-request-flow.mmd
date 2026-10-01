@@ -1,0 +1,32 @@
+flowchart TB
+    Browser[Angular client or API client] --> Options[GET /search/filters]
+    Options --> FilterOptions[Return supported enum names]
+
+    Browser --> Request{Search request}
+    Request -->|Invalid term or filter| Invalid[400 ProblemDetails]
+    Request -->|Valid name without filters| StandardName[Standard search/companies]
+    Request -->|Valid name with filters| Advanced[Advanced search/companies]
+    Request -->|Valid registration ID| StandardId[Standard search/companies]
+
+    Advanced -->|status and type; city or country location| CompaniesHouse[Companies House API]
+    StandardName --> CompaniesHouse
+    StandardId --> CompaniesHouse
+    CompaniesHouse --> Candidates[Map, deduplicate, and rank candidates]
+    Candidates --> LocalMatch{Matches every supplied filter?}
+    LocalMatch -->|No| Exclude[Exclude candidate]
+    LocalMatch -->|Yes| Include[Include candidate]
+    Include --> Log[Save search log and current company records]
+    Exclude --> Log
+    Log --> Database[(SQLite search_logs, Companies, and links)]
+    Log --> Response[200 array, possibly empty]
+    Response --> Browser
+    Invalid --> Browser
+
+    classDef client fill:#e8f1f5,stroke:#24566b,color:#183642
+    classDef service fill:#f7f1df,stroke:#8a6d1d,color:#3d3214
+    classDef database fill:#e9f3e6,stroke:#427a3b,color:#203b1d
+    classDef decision fill:#f8e8e5,stroke:#9b4b40,color:#49221d
+    class Browser,Options,FilterOptions,Request,Invalid,Response client
+    class StandardName,Advanced,StandardId,CompaniesHouse,Candidates,Exclude,Include,Log service
+    class Database database
+    class LocalMatch decision

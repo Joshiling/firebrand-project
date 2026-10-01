@@ -5,6 +5,7 @@ This repository contains the SQLite database, ASP.NET backend, and CompanyLens A
 ## Current Scope
 
 - Search by partial company name or exact registration number.
+- Narrow company searches by status, type, registered-office country, or API-level city.
 - Display current company details from Companies House.
 - Record search activity and filter it by input, company name, or company number.
 - Keep immutable company-profile versions when profile data changes.
@@ -57,25 +58,10 @@ npm start
 
 Open the URL printed by Angular, normally `http://localhost:4200`. The development proxy forwards API requests to `https://localhost:7097`.
 
-To run this checkout alongside another backend already using port 7097, start its API on a free port from this checkout's root:
-
-```powershell
-dotnet run --project api/api.csproj --no-launch-profile --urls https://localhost:7098
-```
-
-In the frontend terminal, set the proxy target before starting Angular:
-
-```powershell
-Set-Location frontend
-$env:FIREBRAND_API_PROXY_TARGET = 'https://localhost:7098'
-npm start -- --port 4205
-```
-
-Without `FIREBRAND_API_PROXY_TARGET`, the proxy continues to use port 7097. Each checkout has its own SQLite database, so a new worktree's activity log may initially be empty.
-
 ## API Routes
 
 ```http
+GET /search/filters
 GET /registry_id?registry_id=00002065
 GET /name?name=Lloyds
 GET /registry_id/00002065
@@ -83,7 +69,9 @@ GET /registry_id/00002065/history
 GET /search_logs?page=1&pageSize=20&query=Lloyds
 ```
 
-- The first two routes return bounded search results. Company numbers remain strings so leading zeros and prefixes are preserved.
+- The filter-options route returns the supported status, type, and country values.
+- The two search routes return bounded results. Company numbers remain strings so leading zeros and prefixes are preserved.
+- The search routes accept repeated status and type parameters plus optional country and city filters. The current UI exposes status, type, and country; see [docs/company-search-filtering.md](docs/company-search-filtering.md) for matching rules and execution flow.
 - The profile route returns current company details and `version_count`. A changed profile creates a new immutable snapshot.
 - The history route returns snapshots ordered by `version_number` descending.
 - The search-log route returns database activity newest first. It can filter by search input, linked company name, or company number and never exposes raw upstream responses.
