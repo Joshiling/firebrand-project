@@ -17,6 +17,19 @@ Authentication, saved companies, onboarding forms, and verification decisions ar
 
 The API key is stored with .NET User Secrets and must never be committed or sent to Angular.
 
+Prerequisites:
+
+- .NET 8 SDK
+- Node.js and npm
+- A Companies House API key
+- An HTTPS development certificate trusted by the local machine
+
+If the HTTPS certificate is not already trusted, run:
+
+```powershell
+dotnet dev-certs https --trust
+```
+
 1. Create an API key in the Companies House Developer Hub.
 2. From the repository root, save it for the API project:
 

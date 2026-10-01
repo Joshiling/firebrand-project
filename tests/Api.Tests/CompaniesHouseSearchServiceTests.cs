@@ -6,6 +6,7 @@ using Api.Models;
 using Api.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.AspNetCore.Http;
 
 namespace Api.Tests;
 
@@ -148,6 +149,24 @@ public sealed class CompaniesHouseSearchServiceTests
         var log = _databaseService.SavedLogs[0];
         Assert.Equal("failed-search", log.UserInput);
         Assert.Equal(ex.StatusCode, log.HttpStatus);
+        Assert.Equal(0, log.ResultCount);
+        Assert.Equal(ex.Message, log.ApiResponse);
+        Assert.Empty(log.Companies);
+    }
+
+    [Fact]
+    public async Task SearchAsync_WhenExternalDataIsMalformed_LogsFailureAndThrowsHandledException()
+    {
+        var httpClientFactory = CreateHttpClientFactory(HttpStatusCode.OK, "{ malformed json");
+        var service = new CompaniesHouseSearchService(httpClientFactory, CreateConfiguration(), _databaseService);
+
+        var exception = await Assert.ThrowsAsync<CompaniesHouseApiException>(
+            () => service.SearchAsync("malformed-search", CancellationToken.None));
+
+        Assert.Equal(StatusCodes.Status502BadGateway, exception.StatusCode);
+        var log = Assert.Single(_databaseService.SavedLogs);
+        Assert.Equal("malformed-search", log.UserInput);
+        Assert.Equal(StatusCodes.Status502BadGateway, log.HttpStatus);
         Assert.Equal(0, log.ResultCount);
         Assert.Empty(log.Companies);
     }

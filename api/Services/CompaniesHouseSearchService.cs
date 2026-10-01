@@ -297,7 +297,17 @@ public sealed class CompaniesHouseSearchService(
         }
 
         var rawJson = await response.Content.ReadAsStringAsync(cancellationToken);
-        var result = JsonSerializer.Deserialize<T>(rawJson, JsonOptions);
+        T? result;
+        try
+        {
+            result = JsonSerializer.Deserialize<T>(rawJson, JsonOptions);
+        }
+        catch (JsonException exception)
+        {
+            throw new CompaniesHouseApiException(
+                $"Companies House returned malformed data: {exception.Message}",
+                StatusCodes.Status502BadGateway);
+        }
 
         return (result ?? throw new CompaniesHouseApiException(
             "Companies House returned an empty search response.",
