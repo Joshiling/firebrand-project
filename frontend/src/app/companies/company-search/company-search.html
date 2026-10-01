@@ -161,7 +161,7 @@
   } @else if (requestFailed()) {
     <div class="state-message state-message--error" role="alert">
       <ng-icon name="lucideCircleAlert" size="28" aria-hidden="true" />
-      <h3>We could not complete the search</h3>
+      <h3>Cannot reach the server</h3>
       <p>Please try again. If the problem continues, the service may be temporarily unavailable.</p>
     </div>
   } @else if (result(); as searchResult) {
