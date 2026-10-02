@@ -45,6 +45,12 @@ footer {
   gap: 1rem;
 }
 
+.header-partner {
+  width: 8rem;
+  height: auto;
+  flex: none;
+}
+
 .header-actions nav {
   align-self: stretch;
   gap: 0.25rem;
@@ -116,5 +122,10 @@ footer p {
   .header-actions {
     width: 100%;
     justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .header-partner {
+    width: 5.5rem;
   }
 }
